@@ -1,5 +1,6 @@
-import { Button, Input, Select, Spin } from "antd";
-import { ArrowRight, BookOpen, ExternalLink, FileText, Image as ImageIcon, LoaderCircle, Plus, RefreshCw, Save, SlidersHorizontal, Sparkles, Upload } from "lucide-react";
+import { Button, Dropdown, Input, Select, Spin } from "antd";
+import { ArrowRight, BookOpen, ExternalLink, FileText, Image as ImageIcon, LoaderCircle, MoreHorizontal, Plus, RefreshCw, Save, SlidersHorizontal, Sparkles, Upload } from "lucide-react";
+import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 
@@ -94,6 +95,12 @@ export default function ComicWorkbenchPage() {
     const activePanel = workbench.panels.find(item => item.id === workbench.selectedId) ?? workbench.panels[0];
     const activeAsset = workbench.assets.find(item => item.id === workbench.selectedId) ?? workbench.assets[0];
     const itemStatus = (item: ComicItem) => item.status === "running" ? "生成中" : item.status === "failed" ? "未完成" : item.previewUrl ? "已有图片" : "待生成";
+    const statusText = [generating ? `${generating} 项生成中` : "", workbench.syncState].filter(Boolean).join(" · ");
+    const defaultSummary = `${configuredModelDisplayName(workbench.imageConfig, workbench.imageConfig.model || workbench.imageConfig.imageModel)} · ${imageSettingsSummary(workbench.imageConfig)}`;
+    const openCanvas = () => {
+        const id = projectIdRef.current;
+        changeProject(async () => { await workbench.save(); if (id && id === projectIdRef.current) navigate(`/canvas/${encodeURIComponent(id)}`); });
+    };
     const theme = canvasThemes[useActiveTheme()];
     const error = localError || workbench.error;
     const renameTarget = items.find(item => item.id === nameDraft?.id);
@@ -259,19 +266,27 @@ export default function ComicWorkbenchPage() {
     return (
         <WorkspacePage fluid scroll={false} className="workbench-page comic-workbench-page">
             <div className="workbench-shell comic-workbench-shell">
-                <header className="comic-workbench-header">
-                    <div className="comic-workbench-title"><BookOpen aria-hidden /><div><h1>漫画制作</h1><p>从原文到资产与分镜，与自由画布共享同一份作品</p></div></div>
-                    <div className="comic-workbench-project-actions">
-                        <Select aria-label="选择漫画作品" value={workbench.project?.id} placeholder="选择漫画作品" options={workbench.projects.map(project => ({ value: project.id, label: project.title }))} onChange={id => changeProject(() => workbench.openProject(id))} loading={workbench.loading} disabled={workbench.busy} className="comic-project-select" showSearch optionFilterProp="label" />
-                        <Button icon={<Plus />} onClick={() => changeProject(workbench.createProject)} disabled={workbench.busy}>新建作品</Button>
-                        <Button icon={<ExternalLink />} disabled={!workbench.project || workbench.busy} onClick={() => { const id = projectIdRef.current; changeProject(async () => { await workbench.save(); if (id && id === projectIdRef.current) navigate(`/canvas/${encodeURIComponent(id)}`); }); }}>打开原画布</Button>
+                <header className="comic-topbar">
+                    <h1 className="sr-only">漫画制作</h1>
+                    <SegmentedControl<Step> size="sm" value={step} onChange={setStep} ariaLabel="漫画制作步骤" options={[{ value: "source", label: "原文", title: "原文与参数" }, { value: "assets", label: `资产 ${workbench.assets.length}`, title: "资产" }, { value: "panels", label: `分镜 ${workbench.panels.length}`, title: "分镜" }]} />
+                    <Select aria-label="选择漫画作品" value={workbench.project?.id} placeholder="选择作品" options={workbench.projects.map(project => ({ value: project.id, label: project.title }))} onChange={id => changeProject(() => workbench.openProject(id))} loading={workbench.loading} disabled={workbench.busy} className="comic-project-select" showSearch optionFilterProp="label" />
+                    {statusText ? <span className="comic-topbar-status" role="status" title={statusText}>{workbench.busy ? <LoaderCircle className="comic-spin" aria-hidden /> : null}{statusText}</span> : null}
+                    <div className="comic-topbar-actions">
+                        <Tooltip title={defaultSummary}>
+                            <span className="comic-topbar-tip"><Button type="text" icon={<SlidersHorizontal />} aria-label={`默认生图参数：${defaultSummary}`} disabled={disabled} onClick={() => openImageSettings()} /></span>
+                        </Tooltip>
+                        <Tooltip title={statusText || "刷新任务状态"}>
+                            <span className="comic-topbar-tip"><Button type="text" icon={workbench.busy ? <LoaderCircle className="comic-spin" /> : <RefreshCw />} aria-label={statusText ? `刷新任务状态，${statusText}` : "刷新任务状态"} disabled={!workbench.project || workbench.loading} onClick={() => void run(workbench.recover)} /></span>
+                        </Tooltip>
+                        <Dropdown trigger={["click"]} menu={{ items: [
+                            { key: "create", icon: <Plus size={16} />, label: "新建作品", disabled: workbench.busy },
+                            { key: "canvas", icon: <ExternalLink size={16} />, label: "打开原画布", disabled: !workbench.project || workbench.busy },
+                        ], onClick: ({ key }) => { if (key === "create") changeProject(workbench.createProject); if (key === "canvas") openCanvas(); } }}>
+                            <Button type="text" icon={<MoreHorizontal />} aria-label="更多作品操作" aria-haspopup="menu" />
+                        </Dropdown>
+                        {step !== "source" ? <Button type="primary" className="comic-topbar-primary" icon={<ImageIcon />} aria-label={step === "assets" ? "生成缺图资产" : "生成就绪分镜"} disabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0} onClick={() => void run(step === "assets" ? workbench.generateAssets : workbench.generatePanels)}>{step === "assets" ? "生成缺图" : "生成分镜"}</Button> : null}
                     </div>
                 </header>
-                <div className="comic-workbench-navigation">
-                    <SegmentedControl<Step> value={step} onChange={setStep} ariaLabel="漫画制作步骤" options={[{ value: "source", label: "01 原文与参数" }, { value: "assets", label: `02 资产 (${workbench.assets.length})` }, { value: "panels", label: `03 分镜 (${workbench.panels.length})` }]} />
-                    <span className="comic-sync-state" role="status">{workbench.busy ? <LoaderCircle className="comic-spin" aria-hidden /> : null}{generating ? `${generating} 项生成中 · ` : ""}{workbench.syncState}</span>
-                    {workbench.project ? <Button size="small" icon={<RefreshCw />} disabled={workbench.loading} onClick={() => void run(workbench.recover)}>刷新任务状态</Button> : null}
-                </div>
                 {error ? <Callout tone="error" onClose={() => { setLocalError(""); workbench.clearError(); }}>{error}</Callout> : null}
                 {dirtyIds.length > 0 && step === "source" ? <Callout tone="info">有 {dirtyIds.length} 条提示词尚未保存，请返回对应资产或分镜保存。</Callout> : null}
                 <div className="comic-workbench-content" ref={scrollRef}>
@@ -299,13 +314,6 @@ export default function ComicWorkbenchPage() {
                         </div>
                     ) : (
                         <div className={`comic-step-frame is-studio ${step === "panels" ? "is-panels" : "is-assets"}`}>
-                            <div className="comic-results-toolbar">
-                                <div><h2>{step === "assets" ? "资产" : "分镜"}</h2><p>{step === "assets" ? "选中一项，左边看图和版本，右边写提示词并生成。" : "先看结果或改提示词，再确认参考图和参数。"}</p></div>
-                                <div className="comic-toolbar-actions">
-                                    <button type="button" className="comic-default-chip" disabled={disabled} onClick={() => openImageSettings()}>{configuredModelDisplayName(workbench.imageConfig, workbench.imageConfig.model || workbench.imageConfig.imageModel)} · {imageSettingsSummary(workbench.imageConfig)}</button>
-                                    <Button type="primary" icon={<ImageIcon />} disabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0} onClick={() => void run(step === "assets" ? workbench.generateAssets : workbench.generatePanels)}>{step === "assets" ? "生成缺图资产" : "生成就绪分镜"}</Button>
-                                </div>
-                            </div>
                             {!visibleItems.length ? <EmptyState icon={step === "assets" ? ImageIcon : BookOpen} title={step === "assets" ? "还没有资产" : "还没有分镜"} description="在原文与参数中完成推导后，即可在这里继续制作。" action={<Button onClick={() => setStep("source")}>返回原文与参数</Button>} /> : <div className="comic-studio-workspace">
                                 <nav className="comic-studio-rail" aria-label={step === "assets" ? "资产列表" : "分镜列表"}>{(step === "assets" ? workbench.assets : workbench.panels).map((entry, index) => <button type="button" key={entry.id} className="comic-studio-rail-item" aria-pressed={entry.id === (step === "assets" ? activeAsset : activePanel)?.id} onClick={() => workbench.setSelectedId(entry.id)}>
                                     <span className="comic-studio-rail-index">{step === "assets" ? ({ character: "角", scene: "景", prop: "具" }[entry.assetKind || ""] || index + 1) : index + 1}</span>

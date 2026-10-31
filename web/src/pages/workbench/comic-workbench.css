@@ -1,15 +1,17 @@
 /* Comic view of a real canvas. The workspace owns colors, controls and motion. */
 .comic-workbench-page { min-width: 0; }
-.comic-workbench-shell { gap: var(--space-3); }
-.comic-workbench-header, .comic-workbench-navigation, .comic-workbench-project-actions, .comic-workbench-title, .comic-section-heading, .comic-source-footer, .comic-results-toolbar, .comic-item-heading, .comic-item-actions, .comic-model-dock { display: flex; align-items: center; gap: var(--space-3); }
-.comic-workbench-header { flex: 0 0 auto; justify-content: space-between; flex-wrap: wrap; padding: var(--space-2) var(--space-1); }
-.comic-workbench-title { min-width: 0; }
-.comic-workbench-title > svg { width: var(--space-6); height: var(--space-6); flex-shrink: 0; color: var(--user-ink-muted); }
-.comic-workbench-title h1, .comic-section-heading h2, .comic-results-toolbar h2, .comic-studio h3 { margin: 0; color: var(--user-ink); font-size: var(--fs-body); font-weight: 600; }
-.comic-workbench-title p, .comic-section-heading p, .comic-results-toolbar p { margin: var(--space-1) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
-.comic-workbench-project-actions { flex-wrap: wrap; }
-.comic-project-select { width: 220px; max-width: 100%; }
-.comic-workbench-navigation { flex: 0 0 auto; justify-content: space-between; flex-wrap: wrap; padding-bottom: var(--space-3); border-bottom: 1px solid var(--user-border); }
+.comic-workbench-shell { gap: var(--space-2); }
+.comic-section-heading, .comic-source-footer { display: flex; align-items: center; gap: var(--space-3); }
+.comic-section-heading h2, .comic-studio h3 { margin: 0; color: var(--user-ink); font-size: var(--fs-body); font-weight: 600; }
+.comic-section-heading p { margin: var(--space-1) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
+.comic-topbar { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; min-width: 0; min-height: 40px; }
+.comic-topbar .app-segmented { flex: 0 1 auto; min-width: 0; }
+.comic-project-select { width: 168px; min-width: 0; flex: 1 1 120px; max-width: 220px; }
+.comic-topbar-status { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 160px; min-width: 0; overflow: hidden; color: var(--user-ink-muted); font-size: var(--fs-caption); white-space: nowrap; text-overflow: ellipsis; }
+.comic-topbar-status svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.comic-topbar-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+.comic-topbar-tip { display: inline-flex; }
+.comic-topbar-primary { margin-left: 6px; }
 .comic-sync-state { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--user-ink-muted); font-size: var(--fs-caption); }
 .comic-sync-state svg, .comic-item-status svg { width: var(--user-icon-size); height: var(--user-icon-size); }
 .comic-workbench-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; overflow: auto; padding: 0 var(--space-1) var(--space-2); scrollbar-gutter: stable; }
@@ -138,11 +140,11 @@
     .comic-composer-scroll { overflow: visible; }
     .comic-stage { min-height: 320px; }
     .comic-hero.is-prompt, .comic-hero.is-result { flex: 0 0 auto; min-height: 220px; }
-    .comic-workbench-header { align-items: flex-start; }
-    .comic-workbench-project-actions, .comic-toolbar-actions { width: 100%; }
-    .comic-project-select, .comic-default-chip { width: 100%; max-width: none; }
-    .comic-workbench-navigation { align-items: flex-start; }
-    .comic-workbench-navigation > .app-segmented { width: 100%; }
+    .comic-topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "steps steps" "project actions"; row-gap: 8px; }
+    .comic-topbar > .app-segmented { grid-area: steps; width: 100%; }
+    .comic-project-select { grid-area: project; width: 100%; max-width: none; }
+    .comic-topbar-status { display: none; }
+    .comic-topbar-actions { grid-area: actions; margin-left: 0; }
     .comic-generation-dock.workbench-composer-dock { grid-template-columns: minmax(0, 1fr) auto; }
     .comic-generation-dock.workbench-composer-dock > .workbench-parameters-trigger { grid-column: 1 / -1; max-width: none; order: 3; }
     .comic-generation-dock.workbench-composer-dock > .workbench-submit { order: 2; }
