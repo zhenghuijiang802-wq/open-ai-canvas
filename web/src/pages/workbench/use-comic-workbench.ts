@@ -27,7 +27,7 @@ import type { Asset } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
 import { resolveWorkbenchAssetResource } from "./workbench-assets";
 
-export type ComicWorkbenchReference = { id: string; title: string; previewUrl?: string; storageKey?: string; missing: boolean; source: "asset" | "upload" | "canvas" | "style" };
+export type ComicWorkbenchReference = { id: string; title: string; previewUrl?: string; storageKey?: string; missing: boolean; source: "asset" | "upload" | "canvas" | "style"; assetKind?: "character" | "scene" | "prop" };
 
 export type ComicWorkbenchItem = {
     id: string; title: string; prompt: string; previewUrl?: string; assetKind?: string;
@@ -219,7 +219,8 @@ export function useComicWorkbench() {
         const ids = project ? comicReferenceIds(node, project) : [];
         const references: ComicWorkbenchReference[] = ids.map((id) => {
             const reference = project?.nodes.find((entry) => entry.id === id);
-            return { id, title: reference?.title || "引用图片不存在", previewUrl: previews[id], storageKey: reference?.metadata?.storageKey, missing: !reference || !(reference.metadata?.storageKey || reference.metadata?.content) || reference.metadata?.status === "loading", source: reference?.metadata?.comic?.role === "asset" ? "asset" : reference?.metadata?.assetId ? "canvas" : "upload" };
+            const assetKind = reference?.metadata?.comic?.role === "asset" ? reference.metadata.comic.assetKind : undefined;
+            return { id, title: reference?.title || "引用图片不存在", previewUrl: previews[id], storageKey: reference?.metadata?.storageKey, missing: !reference || !(reference.metadata?.storageKey || reference.metadata?.content) || reference.metadata?.status === "loading", source: assetKind ? "asset" : reference?.metadata?.assetId ? "canvas" : "upload", ...(assetKind ? { assetKind } : {}) };
         });
         for (const binding of [...(readNodeGenerationSpec(node)?.referenceBindings || [])].sort((left, right) => left.order - right.order)) {
             if (binding.nodeId || binding.role === "source-text") continue;

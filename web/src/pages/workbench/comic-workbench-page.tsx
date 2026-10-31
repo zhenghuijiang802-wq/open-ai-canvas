@@ -71,6 +71,7 @@ export default function ComicWorkbenchPage() {
     const [settingsDraft, setSettingsDraft] = useState<SettingsDraft | null>(null);
     const [savingSettings, setSavingSettings] = useState(false);
     const [settingsError, setSettingsError] = useState("");
+    const [promptSaveError, setPromptSaveError] = useState<{ id: string; message: string } | null>(null);
     const [referencePicker, setReferencePicker] = useState<{ id: string; source: "project" | "library" } | null>(null);
     const [versionNodeId, setVersionNodeId] = useState("");
     const [referenceUploadId, setReferenceUploadId] = useState("");
@@ -88,6 +89,9 @@ export default function ComicWorkbenchPage() {
     const generating = items.filter(item => item.status === "running").length;
     const disabled = workbench.busy || workbench.loading || !workbench.project;
     const visibleItems = step === "assets" ? workbench.assets : workbench.panels;
+    const panelIds = workbench.panels.map(item => item.id).join("\n");
+    const activePanel = workbench.panels.find(item => item.id === workbench.selectedId) ?? workbench.panels[0];
+    const itemStatus = (item: ComicItem) => item.status === "running" ? "生成中" : item.status === "failed" ? "未完成" : item.previewUrl ? "已有图片" : "待生成";
     const theme = canvasThemes[useActiveTheme()];
     const error = localError || workbench.error;
     const renameTarget = items.find(item => item.id === nameDraft?.id);
@@ -103,9 +107,13 @@ export default function ComicWorkbenchPage() {
 
     useEffect(() => {
         setDrafts({}); setTextImport(null); setPreview(null); setNameDraft(null); setSavingName(false); setLocalError(""); setSavingId(""); setPendingNavigation(null); setStep("source");
-        setSettingsDraft(null); setSettingsError(""); setSavingSettings(false); setReferencePicker(null); setVersionNodeId(""); setReferenceUploadId("");
+        setSettingsDraft(null); setSettingsError(""); setSavingSettings(false); setReferencePicker(null); setVersionNodeId(""); setReferenceUploadId(""); setPromptSaveError(null);
     }, [workbench.project?.id]);
     useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [step]);
+    useEffect(() => {
+        if (step !== "panels" || !panelIds || panelIds.split("\n").includes(workbench.selectedId)) return;
+        workbench.setSelectedId(panelIds.split("\n")[0]);
+    }, [step, panelIds, workbench.selectedId, workbench.setSelectedId]);
     useEffect(() => {
         const previous = previousAssetCount.current;
         if (previous.projectId === workbench.project?.id && previous.count === 0 && workbench.assets.length > 0) {
@@ -132,10 +140,11 @@ export default function ComicWorkbenchPage() {
         if (!draft || (draft.value === item.prompt && !draft.pendingSave)) return;
         if (draft.base !== item.prompt) { setLocalError("该提示词已被其他操作更新。本地输入仍保留，请先核对最新版本。"); return; }
         const projectId = projectIdRef.current;
-        setSavingId(item.id); setLocalError("");
+        setSavingId(item.id); setLocalError(""); setPromptSaveError(null);
         try {
             await workbench.updatePrompt(item.id, draft.value);
             if (projectId !== projectIdRef.current) return;
+            setPromptSaveError(current => current?.id === item.id ? null : current);
             setDrafts(current => {
                 const latest = current[item.id];
                 if (!latest) return current;
@@ -148,7 +157,9 @@ export default function ComicWorkbenchPage() {
             if (projectId === projectIdRef.current) {
                 const node = useCanvasStore.getState().projects.find(project => project.id === projectId)?.nodes.find(node => node.id === item.id);
                 if (node && nodeGenerationPrompt(node) === draft.value) setDrafts(current => current[item.id] ? { ...current, [item.id]: { ...current[item.id], base: draft.value, pendingSave: true } } : current);
-                setLocalError(cause instanceof Error ? cause.message : "提示词未保存，本地输入已保留");
+                const message = cause instanceof Error ? cause.message : "提示词未保存，本地输入已保留";
+                setPromptSaveError({ id: item.id, message });
+                setLocalError(message);
             }
         }
         finally { if (projectId === projectIdRef.current) setSavingId(""); }
@@ -230,9 +241,10 @@ export default function ComicWorkbenchPage() {
         const draft = drafts[item.id];
         return <ComicImageCard key={item.id} item={item} isPanel={isPanel} selected={workbench.selectedId === item.id} disabled={disabled || Boolean(savingId)} saving={savingId === item.id}
             prompt={draft?.value ?? item.prompt} dirty={Boolean(draft && (draft.value !== item.prompt || draft.pendingSave))} stale={Boolean(draft && draft.base !== item.prompt)}
+            saveError={promptSaveError?.id === item.id ? promptSaveError.message : ""}
             styleTitle={workbench.settings.styleSelection?.title || workbench.settings.style} settingsSummary={imageSettingsSummary(item.imageConfig)}
             onSelect={() => workbench.setSelectedId(item.id)} onRename={() => setNameDraft({ id: item.id, value: item.title, base: item.title })}
-            onPrompt={value => editPrompt(item, value)} onSave={() => void savePrompt(item)} onReloadPrompt={() => setDrafts(current => { const next = { ...current }; delete next[item.id]; return next; })}
+            onPrompt={value => editPrompt(item, value)} onSave={() => void savePrompt(item)} onReloadPrompt={() => { setPromptSaveError(current => current?.id === item.id ? null : current); setDrafts(current => { const next = { ...current }; delete next[item.id]; return next; }); }}
             onRefine={() => void run(() => workbench.refineNode(item.id))} onGenerate={() => void run(() => workbench.generateNode(item.id))}
             onSettings={() => openImageSettings(item)} onModel={model => void run(() => workbench.updateImageConfig(item.id, { ...item.imageConfig, model, ...(model !== item.imageConfig.model ? { imageParameters: "{}" } : {}) }))}
             onPick={source => setReferencePicker({ id: item.id, source })} onUpload={() => { setReferenceUploadId(item.id); referenceFileRef.current?.click(); }}
@@ -283,13 +295,20 @@ export default function ComicWorkbenchPage() {
                             </section>
                         </div>
                     ) : (
-                        <>
+                        <div className={`comic-step-frame ${step === "panels" ? "is-panels" : "is-assets"}`}>
                             <div className="comic-results-toolbar">
-                                <div><h2>{step === "assets" ? "资产参考图" : "漫画分镜"}</h2><p>{step === "assets" ? "先生成角色、场景和道具，分镜将自动关联这些参考图。" : "先核对提示词与参考资产，再生成分镜图。"}</p></div>
+                                <div><h2>{step === "assets" ? "资产参考图" : "漫画分镜"}</h2><p>{step === "assets" ? "左侧查看图片和版本，右侧修改提示词并生成。" : "先核对提示词与参考资产，再生成分镜图。"}</p></div>
                                 <Button type="primary" icon={<ImageIcon />} disabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0} onClick={() => void run(step === "assets" ? workbench.generateAssets : workbench.generatePanels)}>{step === "assets" ? "生成缺图资产" : "生成就绪分镜"}</Button>
                             </div>
-                            {!visibleItems.length ? <EmptyState icon={step === "assets" ? ImageIcon : BookOpen} title={step === "assets" ? "还没有资产" : "还没有分镜"} description="在原文与参数中完成推导后，即可在这里继续制作。" action={<Button onClick={() => setStep("source")}>返回原文与参数</Button>} /> : <div className={`comic-items ${step === "panels" ? "is-panels" : "is-assets"}`}>{visibleItems.map(item => renderItem(item, step === "panels"))}</div>}
-                        </>
+                            {!visibleItems.length ? <EmptyState icon={step === "assets" ? ImageIcon : BookOpen} title={step === "assets" ? "还没有资产" : "还没有分镜"} description="在原文与参数中完成推导后，即可在这里继续制作。" action={<Button onClick={() => setStep("source")}>返回原文与参数</Button>} /> : step === "assets" ? <div className="comic-items is-assets">{workbench.assets.map(item => renderItem(item, false))}</div> : <div className="comic-panel-workspace">
+                                <nav className="comic-panel-rail" aria-label="分镜列表">{workbench.panels.map((panel, index) => <button type="button" key={panel.id} className="comic-panel-rail-item" aria-pressed={panel.id === activePanel?.id} onClick={() => workbench.setSelectedId(panel.id)}>
+                                    <span className="comic-panel-rail-index">{index + 1}</span>
+                                    <span className="comic-panel-rail-thumb">{panel.previewUrl ? <MediaPreview src={panel.previewUrl} kind="image" alt="" className="comic-panel-rail-image" loading="lazy" /> : <ImageIcon aria-hidden />}</span>
+                                    <span className="comic-panel-rail-copy"><strong>{panel.title}</strong><small>{itemStatus(panel)}{drafts[panel.id] && (drafts[panel.id].value !== panel.prompt || drafts[panel.id].pendingSave) ? " · 未保存" : ""}</small></span>
+                                </button>)}</nav>
+                                <div className="comic-panel-stage">{activePanel ? renderItem(activePanel, true) : null}</div>
+                            </div>}
+                        </div>
                     )}
                 </div>
                 {workbench.project && step !== "source" ? <footer className="comic-model-dock"><span className="comic-field-label">新建图片默认参数</span><span className="comic-model-summary">{configuredModelDisplayName(workbench.imageConfig, workbench.imageConfig.model || workbench.imageConfig.imageModel)} · {imageSettingsSummary(workbench.imageConfig)}</span><Button icon={<SlidersHorizontal />} disabled={disabled} onClick={() => openImageSettings()}>调整默认参数</Button></footer> : null}
