@@ -314,6 +314,7 @@ export type CanvasComicStyleSelection = {
 
 type CanvasComicImageSettings = {
     useUnifiedStyle?: boolean;
+    styleReference?: CanvasComicStyleSelection | null;
     /** Only a known generated prefix is removable; authored prompt text is never rewritten. */
     promptStylePrefix?: string;
 };
@@ -323,6 +324,7 @@ export type CanvasComicMetadata =
           version: 1;
           role: "source";
           settings: CanvasComicSettings;
+          sourceFileName?: string;
           derivationTaskId?: string;
           derivationOperationId?: string;
           derivationFingerprint?: string;

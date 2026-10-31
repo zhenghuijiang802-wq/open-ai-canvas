@@ -1,11 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "antd";
-import { BookOpen, FolderOpen, History, Image as ImageIcon, LoaderCircle, Pencil, Plus, Save, SlidersHorizontal, Sparkles, Upload } from "lucide-react";
+import { BookOpen, FolderOpen, History, Image as ImageIcon, LoaderCircle, Pencil, Plus, Save, SlidersHorizontal, Sparkles, Upload, X } from "lucide-react";
 import { CachedResourceImage } from "@/components/cached-resource-image";
 import { MediaPreview } from "@/components/media-preview";
 import { ModelPicker } from "@/components/model-picker";
 import { CanvasResourceMentionTextarea } from "@/components/canvas/canvas-resource-mention-textarea";
-import { Switch } from "@/components/ui/base/switch";
 import { Callout } from "@/components/ui/product/callout/callout";
 import { currentMediaVersion, listMediaVersions } from "@/lib/canvas/canvas-media-versions";
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
@@ -14,11 +13,11 @@ import { ReferenceCard } from "./workbench-reference-card";
 
 type Props = {
     item: ComicWorkbenchItem; isPanel: boolean; selected: boolean; disabled: boolean; saving: boolean;
-    prompt: string; dirty: boolean; stale: boolean; saveError?: string; styleTitle: string; settingsSummary: string;
+    prompt: string; dirty: boolean; stale: boolean; saveError?: string; settingsSummary: string; batchDisabled: boolean;
     onSelect: () => void; onRename: () => void; onPrompt: (value: string) => void; onSave: () => void; onReloadPrompt: () => void;
     onRefine: () => void; onGenerate: () => void; onSettings: () => void; onModel: (model: string) => void;
     onPick: (source: "project" | "library") => void; onUpload: () => void; onRemove: (id: string) => void;
-    onPreview: (title: string, url?: string) => void; onVersions: () => void; onAdopt: (id: string) => void; onUnifiedStyle: (value: boolean) => void;
+    onPreview: (title: string, url?: string) => void; onVersions: () => void; onAdopt: (id: string) => void; onStylePick: () => void; onStyleRemove: () => void; onBatchGenerate: () => void;
 };
 
 const assetKindLabel: Record<string, string> = { character: "角色", scene: "场景", prop: "道具" };
@@ -39,6 +38,7 @@ export function ComicImageCard(props: Props) {
     useEffect(() => { if (!draftLock.current.dirty && !draftLock.current.stale) setEditing(false); }, [current?.id]);
     const showResult = isPanel && Boolean(item.previewUrl) && !editing;
     const profile = mergedImageCapabilityConfig(item.imageConfig, item.imageConfig.model || item.imageConfig.imageModel);
+    const stylePreview = item.styleReference?.coverUrl || item.references.find(reference => reference.source === "style")?.previewUrl;
     const limit = profile.references.maxImages, canAdd = !unavailable && item.references.length < limit;
     const canGenerate = !unavailable && !dirty && !stale && Boolean(prompt.trim()) && Boolean(item.imageConfig.model) && item.missingReferenceIds.length === 0;
     const kind = isPanel ? "分镜" : assetKindLabel[item.assetKind || ""] || "资产";
@@ -101,7 +101,16 @@ export function ComicImageCard(props: Props) {
                         <button type="button" title="从本地上传" aria-label={`为${item.title}上传参考图`} disabled={!canAdd} onClick={props.onUpload}><Upload /></button>
                     </div></div>
                     <div className="workbench-reference-grid">
-                        {item.references.map(reference => <div className={`comic-reference-entry ${reference.source === "style" ? "is-style-reference" : ""}`} key={reference.id}>
+                        <div className="comic-reference-entry comic-style-reference">
+                            <div className="comic-style-reference-card">
+                                <button type="button" className="comic-style-reference-select" aria-label={item.styleReference ? `更换${item.title}画风参考图` : `为${item.title}选择画风参考图`} disabled={unavailable} onClick={props.onStylePick}>
+                                    {stylePreview ? <MediaPreview src={stylePreview} kind="image" alt="" /> : <><Plus aria-hidden /><span>选择画风图</span></>}
+                                </button>
+                                {item.styleReference ? <button type="button" className="comic-style-reference-remove" aria-label={`移除${item.title}画风参考图`} disabled={unavailable} onClick={props.onStyleRemove}><X /></button> : null}
+                            </div>
+                            <span className="comic-reference-name" title={item.styleReference?.title || "画风参考图"}>画风 · {item.styleReference?.title || "未选择"}</span>
+                        </div>
+                        {item.references.filter(reference => reference.source !== "style").map(reference => <div className="comic-reference-entry" key={reference.id}>
                             <ReferenceCard kind="image" reference={{ id: reference.id, name: reference.title, previewUrl: reference.previewUrl || "", kind: "image", role: "reference", progress: 100, uploading: false, error: reference.missing ? "参考图未就绪" : undefined }} disabled={unavailable || reference.source === "style"} errorLabel="未就绪" onPreview={() => props.onPreview(reference.title, reference.previewUrl)} onRemove={() => props.onRemove(reference.id)} />
                             <span className="comic-reference-name" title={`${referenceCaption(reference)} · ${reference.title}`}>{referenceCaption(reference)} · {reference.title}</span>
                         </div>)}
@@ -109,13 +118,13 @@ export function ComicImageCard(props: Props) {
                     </div>
                     {item.missingReferenceIds.length ? <p className="comic-muted">{item.missingReferenceIds.length} 项参考图未就绪，请先生成或重新选择。</p> : null}
                 </div>
-                <div className="comic-style-row"><span title={props.styleTitle}>统一画风{item.useUnifiedStyle && props.styleTitle ? ` · ${props.styleTitle}` : ""}</span><Switch size="sm" aria-label={`${item.title}统一画风`} checked={item.useUnifiedStyle} disabled={unavailable} onChange={props.onUnifiedStyle} /></div>
                 {item.error ? <Callout tone="error" title={item.status === "failed" ? "生成未完成" : undefined} action={item.status === "failed" ? <Button size="small" disabled={!canGenerate} onClick={props.onGenerate}>重试</Button> : undefined}>{item.error}</Callout> : null}
             </div>
             <fieldset disabled={unavailable} className="workbench-composer-dock comic-generation-dock" aria-label={`${item.title}生成设置`}>
                 <ModelPicker config={item.imageConfig} value={item.imageConfig.model} capability="image" fullWidth variant="creation" className="workbench-model-picker" showSelectedPrice={false} requirements={{ capability: "image", input: { textCount: 1, imageCount: item.references.length, referenceImageCount: item.references.length, videoCount: 0, audioCount: 0, characterCount: 0 } }} onChange={model => { if (!unavailable) props.onModel(model); }} />
                 <button type="button" className="workbench-parameters-trigger" title={props.settingsSummary} aria-label={`调整${item.title}生图参数：${props.settingsSummary}`} onClick={props.onSettings}><SlidersHorizontal /><span>{props.settingsSummary}</span></button>
                 <Button type="primary" className="workbench-submit" icon={<ImageIcon />} loading={running} disabled={!canGenerate} onClick={props.onGenerate}>{item.previewUrl ? "重新生成" : "生成"}</Button>
+                <Button className="comic-batch-submit" disabled={props.batchDisabled || unavailable} onClick={props.onBatchGenerate}>{isPanel ? "生成就绪分镜" : "生成缺图"}</Button>
             </fieldset>
         </section>
     </article>;

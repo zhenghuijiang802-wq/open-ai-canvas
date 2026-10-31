@@ -1,5 +1,5 @@
 import { Button, Dropdown, Input, Select, Spin } from "antd";
-import { ArrowRight, BookOpen, ExternalLink, FileText, Image as ImageIcon, LoaderCircle, MoreHorizontal, Plus, RefreshCw, Save, SlidersHorizontal, Sparkles, Upload } from "lucide-react";
+import { ArrowRight, BookOpen, ExternalLink, FileText, Image as ImageIcon, LoaderCircle, MoreHorizontal, Plus, RefreshCw, Sparkles, Upload } from "lucide-react";
 import { AntTooltip as Tooltip } from "@/components/ui/base/tooltip/ant-tooltip";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
@@ -16,7 +16,7 @@ import { Callout } from "@/components/ui/product/callout/callout";
 import { EmptyState } from "@/components/ui/product/empty-state/empty-state";
 import { ASSET_CATEGORY_LABELS } from "@/lib/asset-category";
 import { canvasThemes } from "@/lib/canvas-theme";
-import { configuredModelDisplayName, mergedImageCapabilityConfig } from "@/lib/model-selection";
+import { mergedImageCapabilityConfig } from "@/lib/model-selection";
 import { normalizeImageValue } from "@/lib/model-capabilities";
 import { useActiveTheme } from "@/stores/canvas/use-canvas-theme-store";
 import { type AiConfig } from "@/stores/use-config-store";
@@ -57,6 +57,33 @@ function decodeText(bytes: Uint8Array, encoding?: string) {
     return { encoding: selected, text: new TextDecoder(selected).decode(bytes).replace(/^\uFEFF/, "") };
 }
 
+function ComicChoiceRow({ label, options, value, disabled, onChange }: { label: string; options: readonly { value: string; label: string }[]; value: string; disabled: boolean; onChange: (value: string) => void }) {
+    const scrollRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const scroller = scrollRef.current;
+        if (!scroller) return;
+        const onWheel = (event: WheelEvent) => {
+            const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
+            const canScroll = delta < 0 ? scroller.scrollLeft > 0 : scroller.scrollLeft < scroller.scrollWidth - scroller.clientWidth - 1;
+            if (canScroll) { event.preventDefault(); scroller.scrollLeft += delta; }
+        };
+        scroller.addEventListener("wheel", onWheel, { passive: false });
+        return () => scroller.removeEventListener("wheel", onWheel);
+    }, []);
+    useEffect(() => {
+        const scroller = scrollRef.current;
+        const selected = scroller?.querySelector<HTMLButtonElement>('button[aria-pressed="true"]');
+        if (!scroller || !selected) return;
+        const left = selected.offsetLeft - scroller.offsetLeft;
+        if (left < scroller.scrollLeft) scroller.scrollLeft = left;
+        else if (left + selected.offsetWidth > scroller.scrollLeft + scroller.clientWidth) scroller.scrollLeft = left + selected.offsetWidth - scroller.clientWidth;
+    }, [value]);
+    return <div className="comic-creation-choices" role="group" aria-label={label}>
+        <span className="comic-creation-choices-label">{label}</span>
+        <div className="comic-creation-choices-scroll" ref={scrollRef}>{options.map(option => <button type="button" key={option.value} aria-pressed={value === option.value} disabled={disabled} onClick={() => onChange(option.value)}>{option.label}</button>)}</div>
+    </div>;
+}
+
 export default function ComicWorkbenchPage() {
     const workbench = useComicWorkbench();
     const navigate = useNavigate();
@@ -74,6 +101,7 @@ export default function ComicWorkbenchPage() {
     const [settingsError, setSettingsError] = useState("");
     const [promptSaveError, setPromptSaveError] = useState<{ id: string; message: string } | null>(null);
     const [referencePicker, setReferencePicker] = useState<{ id: string; source: "project" | "library" } | null>(null);
+    const [stylePickerId, setStylePickerId] = useState("");
     const [versionNodeId, setVersionNodeId] = useState("");
     const [referenceUploadId, setReferenceUploadId] = useState("");
     const fileRef = useRef<HTMLInputElement>(null);
@@ -96,7 +124,6 @@ export default function ComicWorkbenchPage() {
     const activeAsset = workbench.assets.find(item => item.id === workbench.selectedId) ?? workbench.assets[0];
     const itemStatus = (item: ComicItem) => item.status === "running" ? "生成中" : item.status === "failed" ? "未完成" : item.previewUrl ? "已有图片" : "待生成";
     const statusText = [generating ? `${generating} 项生成中` : "", workbench.syncState].filter(Boolean).join(" · ");
-    const defaultSummary = `${configuredModelDisplayName(workbench.imageConfig, workbench.imageConfig.model || workbench.imageConfig.imageModel)} · ${imageSettingsSummary(workbench.imageConfig)}`;
     const openCanvas = () => {
         const id = projectIdRef.current;
         changeProject(async () => { await workbench.save(); if (id && id === projectIdRef.current) navigate(`/canvas/${encodeURIComponent(id)}`); });
@@ -116,7 +143,7 @@ export default function ComicWorkbenchPage() {
 
     useEffect(() => {
         setDrafts({}); setTextImport(null); setPreview(null); setNameDraft(null); setSavingName(false); setLocalError(""); setSavingId(""); setPendingNavigation(null); setStep("source");
-        setSettingsDraft(null); setSettingsError(""); setSavingSettings(false); setReferencePicker(null); setVersionNodeId(""); setReferenceUploadId(""); setPromptSaveError(null);
+        setSettingsDraft(null); setSettingsError(""); setSavingSettings(false); setReferencePicker(null); setStylePickerId(""); setVersionNodeId(""); setReferenceUploadId(""); setPromptSaveError(null);
     }, [workbench.project?.id]);
     useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [step]);
     useEffect(() => {
@@ -252,7 +279,7 @@ export default function ComicWorkbenchPage() {
         return <ComicImageCard key={item.id} item={item} isPanel={isPanel} selected={workbench.selectedId === item.id} disabled={disabled || Boolean(savingId)} saving={savingId === item.id}
             prompt={draft?.value ?? item.prompt} dirty={Boolean(draft && (draft.value !== item.prompt || draft.pendingSave))} stale={Boolean(draft && draft.base !== item.prompt)}
             saveError={promptSaveError?.id === item.id ? promptSaveError.message : ""}
-            styleTitle={workbench.settings.styleSelection?.title || workbench.settings.style} settingsSummary={imageSettingsSummary(item.imageConfig)}
+            settingsSummary={imageSettingsSummary(item.imageConfig)} batchDisabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0}
             onSelect={() => workbench.setSelectedId(item.id)} onRename={() => setNameDraft({ id: item.id, value: item.title, base: item.title })}
             onPrompt={value => editPrompt(item, value)} onSave={() => void savePrompt(item)} onReloadPrompt={() => { setPromptSaveError(current => current?.id === item.id ? null : current); setDrafts(current => { const next = { ...current }; delete next[item.id]; return next; }); }}
             onRefine={() => void run(() => workbench.refineNode(item.id))} onGenerate={() => void run(() => workbench.generateNode(item.id))}
@@ -260,7 +287,8 @@ export default function ComicWorkbenchPage() {
             onPick={source => setReferencePicker({ id: item.id, source })} onUpload={() => { setReferenceUploadId(item.id); referenceFileRef.current?.click(); }}
             onRemove={id => void run(() => workbench.removeReference(item.id, id))} onPreview={(title, previewUrl) => setPreview({ title, previewUrl })}
             onVersions={() => setVersionNodeId(item.id)} onAdopt={versionId => void run(async () => { await workbench.adoptVersion(item.id, versionId); })}
-            onUnifiedStyle={value => void run(() => workbench.setNodeUnifiedStyle(item.id, value))} />;
+            onStylePick={() => setStylePickerId(item.id)} onStyleRemove={() => void run(() => workbench.setStyleReference(item.id, null))}
+            onBatchGenerate={() => void run(isPanel ? workbench.generatePanels : workbench.generateAssets)} />;
     }
 
     return (
@@ -272,9 +300,6 @@ export default function ComicWorkbenchPage() {
                     <Select aria-label="选择漫画作品" value={workbench.project?.id} placeholder="选择作品" options={workbench.projects.map(project => ({ value: project.id, label: project.title }))} onChange={id => changeProject(() => workbench.openProject(id))} loading={workbench.loading} disabled={workbench.busy} className="comic-project-select" showSearch optionFilterProp="label" />
                     {statusText ? <span className="comic-topbar-status" role="status" title={statusText}>{workbench.busy ? <LoaderCircle className="comic-spin" aria-hidden /> : null}{statusText}</span> : null}
                     <div className="comic-topbar-actions">
-                        <Tooltip title={defaultSummary}>
-                            <span className="comic-topbar-tip"><Button type="text" icon={<SlidersHorizontal />} aria-label={`默认生图参数：${defaultSummary}`} disabled={disabled} onClick={() => openImageSettings()} /></span>
-                        </Tooltip>
                         <Tooltip title={statusText || "刷新任务状态"}>
                             <span className="comic-topbar-tip"><Button type="text" icon={workbench.busy ? <LoaderCircle className="comic-spin" /> : <RefreshCw />} aria-label={statusText ? `刷新任务状态，${statusText}` : "刷新任务状态"} disabled={!workbench.project || workbench.loading} onClick={() => void run(workbench.recover)} /></span>
                         </Tooltip>
@@ -284,7 +309,6 @@ export default function ComicWorkbenchPage() {
                         ], onClick: ({ key }) => { if (key === "create") changeProject(workbench.createProject); if (key === "canvas") openCanvas(); } }}>
                             <Button type="text" icon={<MoreHorizontal />} aria-label="更多作品操作" aria-haspopup="menu" />
                         </Dropdown>
-                        {step !== "source" ? <Button type="primary" className="comic-topbar-primary" icon={<ImageIcon />} aria-label={step === "assets" ? "生成缺图资产" : "生成就绪分镜"} disabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0} onClick={() => void run(step === "assets" ? workbench.generateAssets : workbench.generatePanels)}>{step === "assets" ? "生成缺图" : "生成分镜"}</Button> : null}
                     </div>
                 </header>
                 {error ? <Callout tone="error" onClose={() => { setLocalError(""); workbench.clearError(); }}>{error}</Callout> : null}
@@ -293,23 +317,21 @@ export default function ComicWorkbenchPage() {
                     {workbench.loading ? <div className="comic-loading"><Spin /><span>正在载入漫画作品</span></div> : !workbench.project ? <EmptyState icon={BookOpen} title="开始一部漫画作品" description="创建作品后，上传 TXT 或粘贴正文。推导出的资产和分镜也能在自由画布继续制作。" action={<Button type="primary" icon={<Plus />} onClick={() => void run(workbench.createProject)}>新建作品</Button>} /> : step === "source" ? (
                         <div className="comic-source-grid">
                             <section className="workbench-composer comic-source-editor" aria-label="漫画原文">
-                                <div className="comic-section-heading"><div><h2>原文</h2><p>上传 TXT，或直接粘贴小说、剧本正文。</p></div><Button icon={<Upload />} onClick={() => fileRef.current?.click()} disabled={disabled}>上传 TXT</Button></div>
-                                <Input.TextArea aria-label="漫画原文" value={workbench.sourceText} placeholder="在此粘贴要改编为漫画的正文…" onChange={event => workbench.setSourceText(event.target.value)} disabled={workbench.busy} className="comic-source-textarea" />
-                                <div className="comic-creation-controls" aria-label="创作设置">
-                                    <label><span>故事类型</span><Select aria-label="故事类型" value={workbench.settings.storyType || "auto"} options={COMIC_STORY_TYPES} disabled={disabled} onChange={storyType => workbench.setSettings({ ...workbench.settings, storyType })} /></label>
-                                    <label><span>情绪与色调</span><Select aria-label="情绪与色调" value={workbench.settings.emotionTone || "auto"} options={COMIC_EMOTION_TONES} disabled={disabled} onChange={emotionTone => workbench.setSettings({ ...workbench.settings, emotionTone })} /></label>
-                                    <label><span>分镜数量</span><Select<string | number> aria-label="分镜数量" value={workbench.settings.panelCount} options={[{ value: "auto", label: "自动判断" }, ...Array.from({ length: 24 }, (_, index) => ({ value: index + 1, label: `${index + 1} 镜` }))]} disabled={disabled} onChange={panelCount => workbench.setSettings({ ...workbench.settings, panelCount: panelCount === "auto" ? "auto" : Number(panelCount) })} /></label>
-                                    <label><span>叙事预设</span><Select aria-label="叙事预设" value={workbench.settings.narrativePreset || "audio_comic_drama"} options={COMIC_NARRATIVE_PRESETS.map(({ value, label }) => ({ value, label }))} disabled={disabled} onChange={narrativePreset => workbench.setSettings({ ...workbench.settings, narrativePreset })} /></label>
+                                <div className={`comic-source-input ${hasResult ? "is-derived" : "is-pending"}`}>
+                                    <span id="comic-source-status" className="sr-only">{hasResult ? "已完成推导" : "尚未推导"}</span>
+                                    <Input.TextArea aria-label="漫画原文" aria-describedby="comic-source-status" value={workbench.sourceText} placeholder="在此粘贴要改编为漫画的正文…" onChange={event => workbench.setSourceText(event.target.value)} disabled={workbench.busy} className="comic-source-textarea" />
                                 </div>
-                                <div className="comic-source-footer"><span>{workbench.sourceText.length.toLocaleString()} 字</span><Button icon={<Save />} onClick={() => void run(workbench.save)} disabled={disabled}>保存原文与参数</Button></div>
+                                <div className="comic-source-footer"><span>{workbench.sourceText.length.toLocaleString()} 字</span><div className="comic-source-file">{workbench.sourceFileName ? <span className="comic-source-file-name" title={`已导入：${workbench.sourceFileName}`}><FileText aria-hidden /><span>已导入：{workbench.sourceFileName}</span></span> : null}<Button icon={<Upload />} onClick={() => fileRef.current?.click()} disabled={disabled}>上传 TXT</Button></div></div>
                             </section>
                             <section className="workbench-composer comic-source-settings" aria-label="推导参数">
-                                <div className="comic-section-heading"><div><h2>推导参数</h2><p>先整理可编辑的资产设定和分镜提示词。</p></div></div>
                                 <ComicStylePicker value={workbench.settings.style} selection={workbench.settings.styleSelection} disabled={disabled} contextKey={`${getActiveUserScope()}:${workbench.project.id}`} onChange={(style, styleSelection) => workbench.setSettings({ ...workbench.settings, style, styleSelection })} />
-                                <div className="comic-field"><span>文本推理模型</span><ModelPicker config={workbench.textConfig} value={workbench.textModel} capability="text" onChange={workbench.setTextModel} fullWidth variant="creation" /></div>
-                                <div className="comic-source-next"><FileText aria-hidden /><p>生成资产提示词和分镜提示词后，可逐条修改，也可以交给影策 AI 继续细化。</p></div>
-                                {hasResult ? <Callout tone="info" title="这部作品已完成推导">原文和当前成果均会保留。需要重新推导时，请新建作品；已有资产和分镜仍可继续编辑、生图。</Callout> : null}
-                                <Button type="primary" size="large" icon={<Sparkles />} loading={workbench.busy} disabled={disabled || hasResult || !workbench.sourceText.trim() || !workbench.textModel} onClick={() => void derive()}>推导资产与分镜 <ArrowRight /></Button>
+                                <div className="comic-creation-controls" aria-label="创作设置">
+                                    <ComicChoiceRow label="故事类型" options={COMIC_STORY_TYPES} value={workbench.settings.storyType || "auto"} disabled={disabled} onChange={storyType => workbench.setSettings({ ...workbench.settings, storyType })} />
+                                    <ComicChoiceRow label="情绪色调" options={COMIC_EMOTION_TONES} value={workbench.settings.emotionTone || "auto"} disabled={disabled} onChange={emotionTone => workbench.setSettings({ ...workbench.settings, emotionTone })} />
+                                    <ComicChoiceRow label="叙事预设" options={COMIC_NARRATIVE_PRESETS} value={workbench.settings.narrativePreset || "audio_comic_drama"} disabled={disabled} onChange={narrativePreset => workbench.setSettings({ ...workbench.settings, narrativePreset })} />
+                                    <ComicChoiceRow label="分镜数量" options={[{ value: "auto", label: "自动判断" }, ...Array.from({ length: 24 }, (_, index) => ({ value: String(index + 1), label: `${index + 1} 镜` }))]} value={String(workbench.settings.panelCount)} disabled={disabled} onChange={panelCount => workbench.setSettings({ ...workbench.settings, panelCount: panelCount === "auto" ? "auto" : Number(panelCount) })} />
+                                </div>
+                                <div className="comic-source-actions"><ModelPicker config={workbench.textConfig} value={workbench.textModel} capability="text" onChange={workbench.setTextModel} fullWidth variant="creation" /><Button type="primary" size="large" className="comic-source-derive" icon={<Sparkles />} loading={workbench.busy} disabled={disabled || hasResult || !workbench.sourceText.trim() || !workbench.textModel} onClick={() => void derive()}>推导资产与分镜 <ArrowRight /></Button></div>
                             </section>
                         </div>
                     ) : (
@@ -328,7 +350,8 @@ export default function ComicWorkbenchPage() {
             </div>
             <input ref={fileRef} type="file" accept=".txt,text/plain" className="sr-only" aria-label="选择 TXT 文件" onChange={event => { void chooseFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
             <input ref={referenceFileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="sr-only" aria-label="选择参考图片" onChange={event => { void uploadReferences(Array.from(event.target.files || [])); event.currentTarget.value = ""; }} />
-            <AppModal title="导入 TXT" open={Boolean(textImport)} onCancel={() => setTextImport(null)} width="min(720px, calc(100vw - 32px))" footer={<><Button onClick={() => setTextImport(null)}>取消</Button><Button type="primary" disabled={!textImport || textImport.projectId !== workbench.project?.id || !textImport.text.trim()} onClick={() => { if (!textImport || textImport.projectId !== projectIdRef.current) return; workbench.setSourceText(textImport.text); setTextImport(null); setStep("source"); }}>确认导入正文</Button></>}>
+            <AppModal title="选择画风参考图" open={Boolean(stylePickerId)} onCancel={() => setStylePickerId("")} footer={null} width="min(760px, calc(100vw - 32px))"><ComicStylePicker referenceOnly value={workbench.settings.style} selection={items.find(item => item.id === stylePickerId)?.styleReference} disabled={disabled} contextKey={`${getActiveUserScope()}:${workbench.project?.id || ""}:${stylePickerId}`} onChange={(_style, selection) => { if (!stylePickerId || !selection) return; const id = stylePickerId; void run(async () => { await workbench.setStyleReference(id, selection); setStylePickerId(""); }); }} /></AppModal>
+            <AppModal title="导入 TXT" open={Boolean(textImport)} onCancel={() => setTextImport(null)} width="min(720px, calc(100vw - 32px))" footer={<><Button onClick={() => setTextImport(null)}>取消</Button><Button type="primary" disabled={!textImport || textImport.projectId !== workbench.project?.id || !textImport.text.trim()} onClick={() => { if (!textImport || textImport.projectId !== projectIdRef.current) return; workbench.importSourceText(textImport.text, textImport.name); setTextImport(null); setStep("source"); }}>确认导入正文</Button></>}>
                 {textImport ? <div className="comic-import-content"><p className="comic-muted">{textImport.name} · {textImport.text.length.toLocaleString()} 字</p><label className="comic-field"><span>文件编码</span><Select aria-label="TXT 文件编码" value={textImport.encoding} options={[{ value: "utf-8", label: "UTF-8 / BOM" }, { value: "gb18030", label: "GB18030 / GBK" }, { value: "utf-16le", label: "UTF-16 LE" }, { value: "utf-16be", label: "UTF-16 BE" }]} onChange={encoding => setTextImport({ ...textImport, ...decodeText(textImport.bytes, encoding) })} /></label><Input.TextArea aria-label="TXT 解码预览" value={textImport.text.slice(0, 5000)} readOnly autoSize={{ minRows: 10, maxRows: 16 }} /><p className="comic-muted">预览前 5000 字，导入保留全文。请检查中文是否正常。</p></div> : null}
             </AppModal>
             <AppModal title="修改名称" open={Boolean(nameDraft)} onCancel={() => { if (!savingName) setNameDraft(null); }} maskClosable={!savingName} closable={!savingName} width={420} footer={<><Button disabled={savingName} onClick={() => setNameDraft(null)}>取消</Button><Button type="primary" loading={savingName} disabled={renameDisabled || !nameDraft?.value.trim()} onClick={() => void saveName()}>保存名称</Button></>}>

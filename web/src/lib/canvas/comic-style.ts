@@ -18,14 +18,19 @@ export function validateComicStyleSelection(value: unknown): CanvasComicStyleSel
     return { id: raw.id as string, title: raw.title as string, ...(raw.coverUrl !== undefined ? { coverUrl: raw.coverUrl as string } : {}), ...(raw.referenceResourceId !== undefined ? { referenceResourceId: raw.referenceResourceId as string } : {}) };
 }
 
-export function comicStyleReference(node: CanvasNodeData, source: CanvasNodeData | undefined): ReferenceImage | undefined {
+export function selectedComicStyleReference(node: CanvasNodeData, source: CanvasNodeData | undefined): CanvasComicStyleSelection | undefined {
     const comic = node.metadata?.comic;
-    if (!comic || comic.role === "source" || comic.useUnifiedStyle === false || source?.metadata?.comic?.role !== "source") return undefined;
-    const selected = source.metadata.comic.settings.styleSelection;
+    if (!comic || comic.role === "source") return undefined;
+    const selected = comic.styleReference === undefined ? (comic.useUnifiedStyle === false || source?.metadata?.comic?.role !== "source" ? undefined : source.metadata.comic.settings.styleSelection) : comic.styleReference;
     if (!selected) return undefined;
     const style = validateComicStyleSelection(selected);
-    if (!style.referenceResourceId) return undefined;
-    return { id: `comic-style:${style.referenceResourceId}`, name: `${style.title} · 画风参考`, type: "image/png", storageKey: `resource:${style.referenceResourceId}`, dataUrl: "" };
+    return style.referenceResourceId || style.coverUrl?.startsWith("/comic-style-previews/") ? style : undefined;
+}
+
+export function comicStyleReference(node: CanvasNodeData, source: CanvasNodeData | undefined): ReferenceImage | undefined {
+    const style = selectedComicStyleReference(node, source);
+    if (!style || (!style.referenceResourceId && !style.coverUrl?.startsWith("/comic-style-previews/"))) return undefined;
+    return { id: `comic-style:${style.referenceResourceId || style.id}`, name: `${style.title} · 画风参考`, type: style.referenceResourceId ? "image/png" : "image/webp", ...(style.referenceResourceId ? { storageKey: `resource:${style.referenceResourceId}` } : { url: style.coverUrl }), dataUrl: "" };
 }
 
 function referenceResourceId(reference: ReferenceImage) {
@@ -38,7 +43,8 @@ function referenceResourceId(reference: ReferenceImage) {
 export function appendComicStyleReference(node: CanvasNodeData, source: CanvasNodeData | undefined, references: ReferenceImage[]) {
     const style = comicStyleReference(node, source);
     if (!style) return { references, styleIndex: -1, styleAdded: false };
-    const duplicate = references.findIndex((reference) => referenceResourceId(reference) === referenceResourceId(style));
+    const resourceId = referenceResourceId(style);
+    const duplicate = resourceId ? references.findIndex((reference) => referenceResourceId(reference) === resourceId) : -1;
     if (duplicate >= 0) return { references, styleIndex: duplicate, styleAdded: false };
     return { references: [...references, style], styleIndex: references.length, styleAdded: true };
 }

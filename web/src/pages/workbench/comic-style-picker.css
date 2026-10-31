@@ -1,36 +1,38 @@
 .comic-style-picker { display: flex; flex-direction: column; gap: var(--space-3); min-width: 0; }
-.comic-style-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.comic-style-heading h3 { margin: 0; color: var(--user-ink); font-size: var(--fs-body); font-weight: 600; }
-.comic-style-heading p { margin: var(--space-1) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
-.comic-style-heading > .ant-btn { flex-shrink: 0; }
-.comic-style-current { display: flex; align-items: center; gap: var(--space-3); min-width: 0; padding: var(--space-3); border: 1px solid var(--control-selected-border); border-radius: var(--user-radius-control); background: var(--control-selected-bg); }
-.comic-style-current-image { display: grid; flex: 0 0 48px; width: 48px; height: 64px; place-items: center; overflow: hidden; border-radius: var(--r-sm); background: var(--user-surface-muted); color: var(--user-ink-muted); }
-.comic-style-current-image > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.comic-style-current { display: flex; align-items: center; gap: var(--space-4); min-width: 0; padding: var(--space-4); border: 1px solid var(--control-selected-border); border-radius: var(--user-radius-control); background: var(--control-selected-bg); }
+.comic-style-current-image { display: grid; flex: 0 0 96px; width: 96px; height: 128px; place-items: center; overflow: hidden; border-radius: var(--r-sm); background: var(--user-surface-muted); color: var(--user-ink-muted); }
+.comic-style-current-image > img { display: block; width: 100%; height: 100%; object-fit: contain; }
 .comic-style-current-image .media-unavailable { min-height: 0; padding: var(--space-1); }
 .comic-style-current-image .media-unavailable > span { display: none; }
 .comic-style-current > div { flex: 1 1 auto; min-width: 0; }
 .comic-style-current-caption { display: flex; align-items: center; gap: var(--space-1); color: var(--user-ink-muted); font-size: var(--fs-caption); }
 .comic-style-current-caption svg { width: var(--space-3); height: var(--space-3); }
 .comic-style-current strong { display: block; margin-top: var(--space-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--user-ink); font-size: var(--fs-caption); font-weight: 600; }
-.comic-style-current p { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; margin: var(--space-1) 0 0; overflow: hidden; overflow-wrap: anywhere; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.5; }
+.comic-style-current p { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; margin: var(--space-1) 0 0; overflow: hidden; overflow-wrap: anywhere; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.5; }
 .comic-style-library-tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-width: 0; }
 .comic-style-library-tools > .ant-input-affix-wrapper { width: auto; min-width: 120px; flex: 1 1 120px; }
 .comic-style-library-tools .ant-input-prefix > svg { width: var(--user-icon-size); height: var(--user-icon-size); color: var(--user-ink-soft); }
-.comic-style-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: start; gap: var(--space-2); min-width: 0; min-height: 160px; max-height: clamp(220px, 34vh, 360px); overflow-y: auto; overscroll-behavior: contain; padding: var(--space-1); scrollbar-gutter: stable; }
+.comic-style-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); align-content: start; gap: var(--space-2); min-width: 0; padding: var(--space-1); }
+.comic-style-add { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); min-width: 0; min-height: 100px; border: 1px dashed var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface); color: var(--user-ink-muted); font-size: var(--fs-caption); cursor: pointer; }
+.comic-style-add:hover:not(:disabled) { border-color: var(--control-selected-border); color: var(--user-ink); }
+.comic-style-add:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
+.comic-style-add:disabled { opacity: 0.5; cursor: not-allowed; }
+.comic-style-add svg { width: var(--space-5); height: var(--space-5); }
 .comic-style-card { position: relative; min-width: 0; align-self: start; overflow: hidden; border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface); transition: border-color var(--user-motion); }
 .comic-style-card:hover, .comic-style-card.is-selected { border-color: var(--control-selected-border); }
 .comic-style-card.is-selected { box-shadow: 0 0 0 1px var(--control-selected-border); }
 .comic-style-card-select { display: flex; flex-direction: column; width: 100%; min-width: 0; padding: 0; border: 0; background: transparent; text-align: left; cursor: pointer; color: var(--user-ink); }
 .comic-style-card-select:disabled { opacity: 0.55; cursor: not-allowed; }
-.comic-style-card-image { position: relative; display: grid; width: 100%; aspect-ratio: 3 / 4; place-items: center; overflow: hidden; background: var(--user-surface-muted); }
-.comic-style-card-image > img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform var(--product-state) var(--product-ease); }
+.comic-style-card-image { position: relative; display: grid; width: 100%; aspect-ratio: 4 / 3; place-items: center; overflow: hidden; background: var(--user-surface-muted); }
+.comic-style-card-image > img { display: block; width: 100%; height: 100%; object-fit: contain; transition: transform var(--product-state) var(--product-ease); }
 .comic-style-card-select:hover:not(:disabled) .comic-style-card-image > img { transform: scale(1.03); }
 .comic-style-card-image > .media-unavailable { position: absolute; inset: 0; min-height: 0; padding: var(--space-2); font-size: var(--fs-caption); }
 .comic-style-card-empty { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); color: var(--user-ink-soft); font-size: var(--fs-caption); }
 .comic-style-card-check { position: absolute; top: var(--space-2); right: var(--space-2); display: grid; width: var(--space-5); height: var(--space-5); place-items: center; border-radius: var(--r-full); background: var(--btn-solid-bg); color: var(--btn-solid-fg); }
 .comic-style-card-check > svg { width: var(--space-3); height: var(--space-3); }
-.comic-style-card-name { display: block; width: 100%; min-width: 0; padding: var(--space-2); padding-right: 43px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); font-weight: 500; line-height: 1.5; }
-.comic-style-card-edit { position: absolute; right: 0; bottom: 0; display: flex; align-items: center; justify-content: center; gap: var(--space-1); min-width: 39px; min-height: 34px; padding: var(--space-1); border: 0; border-left: 1px solid var(--user-border); background: var(--user-surface); color: var(--user-ink-muted); font-size: var(--fs-caption); cursor: pointer; }
+.comic-style-card-name { display: block; width: 100%; min-width: 0; padding: var(--space-1); overflow-wrap: anywhere; text-align: center; font-size: var(--fs-caption); font-weight: 500; line-height: 1.4; }
+.comic-style-card-edit { position: absolute; left: var(--space-1); top: var(--space-1); display: flex; align-items: center; justify-content: center; min-width: 28px; min-height: 28px; padding: var(--space-1); border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface); color: var(--user-ink); font-size: var(--fs-caption); cursor: pointer; opacity: 0; }
+.comic-style-card:hover .comic-style-card-edit, .comic-style-card:focus-within .comic-style-card-edit { opacity: 1; }
 .comic-style-card-edit > svg { width: 12px; height: 12px; }
 .comic-style-card-edit > span { display: none; }
 .comic-style-card-edit:hover:not(:disabled) { background: var(--user-surface-hover); color: var(--user-ink); }
@@ -48,5 +50,5 @@
 .comic-style-upload-copy strong { font-size: var(--fs-caption); font-weight: 500; color: var(--user-ink); }
 .comic-style-upload-copy p, .comic-style-editor-note { margin: var(--space-2) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.7; }
 .comic-style-upload-copy > div { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-3); }
-@media (max-width: 540px) { .comic-style-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .comic-style-card-name { padding-right: 56px; } .comic-style-card-edit { min-width: 50px; } .comic-style-card-edit > span { display: inline; } .comic-style-image-editor { gap: var(--space-3); } .comic-style-upload-preview { flex-basis: 80px; width: 80px; height: 108px; } }
+@media (max-width: 540px) { .comic-style-grid { grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); } .comic-style-image-editor { gap: var(--space-3); } .comic-style-upload-preview { flex-basis: 80px; width: 80px; height: 108px; } }
 @media (prefers-reduced-motion: reduce) { .comic-style-card, .comic-style-card-image > img { transition: none; } .comic-style-card-select:hover:not(:disabled) .comic-style-card-image > img { transform: none; } }
