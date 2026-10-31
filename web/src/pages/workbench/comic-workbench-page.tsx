@@ -90,7 +90,9 @@ export default function ComicWorkbenchPage() {
     const disabled = workbench.busy || workbench.loading || !workbench.project;
     const visibleItems = step === "assets" ? workbench.assets : workbench.panels;
     const panelIds = workbench.panels.map(item => item.id).join("\n");
+    const assetIds = workbench.assets.map(item => item.id).join("\n");
     const activePanel = workbench.panels.find(item => item.id === workbench.selectedId) ?? workbench.panels[0];
+    const activeAsset = workbench.assets.find(item => item.id === workbench.selectedId) ?? workbench.assets[0];
     const itemStatus = (item: ComicItem) => item.status === "running" ? "生成中" : item.status === "failed" ? "未完成" : item.previewUrl ? "已有图片" : "待生成";
     const theme = canvasThemes[useActiveTheme()];
     const error = localError || workbench.error;
@@ -111,9 +113,10 @@ export default function ComicWorkbenchPage() {
     }, [workbench.project?.id]);
     useEffect(() => { if (scrollRef.current) scrollRef.current.scrollTop = 0; }, [step]);
     useEffect(() => {
-        if (step !== "panels" || !panelIds || panelIds.split("\n").includes(workbench.selectedId)) return;
-        workbench.setSelectedId(panelIds.split("\n")[0]);
-    }, [step, panelIds, workbench.selectedId, workbench.setSelectedId]);
+        const ids = step === "panels" ? panelIds : step === "assets" ? assetIds : "";
+        if (!ids || ids.split("\n").includes(workbench.selectedId)) return;
+        workbench.setSelectedId(ids.split("\n")[0]);
+    }, [step, panelIds, assetIds, workbench.selectedId, workbench.setSelectedId]);
     useEffect(() => {
         const previous = previousAssetCount.current;
         if (previous.projectId === workbench.project?.id && previous.count === 0 && workbench.assets.length > 0) {
@@ -295,23 +298,25 @@ export default function ComicWorkbenchPage() {
                             </section>
                         </div>
                     ) : (
-                        <div className={`comic-step-frame ${step === "panels" ? "is-panels" : "is-assets"}`}>
+                        <div className={`comic-step-frame is-studio ${step === "panels" ? "is-panels" : "is-assets"}`}>
                             <div className="comic-results-toolbar">
-                                <div><h2>{step === "assets" ? "资产参考图" : "漫画分镜"}</h2><p>{step === "assets" ? "左侧查看图片和版本，右侧修改提示词并生成。" : "先核对提示词与参考资产，再生成分镜图。"}</p></div>
-                                <Button type="primary" icon={<ImageIcon />} disabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0} onClick={() => void run(step === "assets" ? workbench.generateAssets : workbench.generatePanels)}>{step === "assets" ? "生成缺图资产" : "生成就绪分镜"}</Button>
+                                <div><h2>{step === "assets" ? "资产" : "分镜"}</h2><p>{step === "assets" ? "选中一项，左边看图和版本，右边写提示词并生成。" : "先看结果或改提示词，再确认参考图和参数。"}</p></div>
+                                <div className="comic-toolbar-actions">
+                                    <button type="button" className="comic-default-chip" disabled={disabled} onClick={() => openImageSettings()}>{configuredModelDisplayName(workbench.imageConfig, workbench.imageConfig.model || workbench.imageConfig.imageModel)} · {imageSettingsSummary(workbench.imageConfig)}</button>
+                                    <Button type="primary" icon={<ImageIcon />} disabled={disabled || !visibleItems.length || generating > 0 || dirtyIds.length > 0} onClick={() => void run(step === "assets" ? workbench.generateAssets : workbench.generatePanels)}>{step === "assets" ? "生成缺图资产" : "生成就绪分镜"}</Button>
+                                </div>
                             </div>
-                            {!visibleItems.length ? <EmptyState icon={step === "assets" ? ImageIcon : BookOpen} title={step === "assets" ? "还没有资产" : "还没有分镜"} description="在原文与参数中完成推导后，即可在这里继续制作。" action={<Button onClick={() => setStep("source")}>返回原文与参数</Button>} /> : step === "assets" ? <div className="comic-items is-assets">{workbench.assets.map(item => renderItem(item, false))}</div> : <div className="comic-panel-workspace">
-                                <nav className="comic-panel-rail" aria-label="分镜列表">{workbench.panels.map((panel, index) => <button type="button" key={panel.id} className="comic-panel-rail-item" aria-pressed={panel.id === activePanel?.id} onClick={() => workbench.setSelectedId(panel.id)}>
-                                    <span className="comic-panel-rail-index">{index + 1}</span>
-                                    <span className="comic-panel-rail-thumb">{panel.previewUrl ? <MediaPreview src={panel.previewUrl} kind="image" alt="" className="comic-panel-rail-image" loading="lazy" /> : <ImageIcon aria-hidden />}</span>
-                                    <span className="comic-panel-rail-copy"><strong>{panel.title}</strong><small>{itemStatus(panel)}{drafts[panel.id] && (drafts[panel.id].value !== panel.prompt || drafts[panel.id].pendingSave) ? " · 未保存" : ""}</small></span>
+                            {!visibleItems.length ? <EmptyState icon={step === "assets" ? ImageIcon : BookOpen} title={step === "assets" ? "还没有资产" : "还没有分镜"} description="在原文与参数中完成推导后，即可在这里继续制作。" action={<Button onClick={() => setStep("source")}>返回原文与参数</Button>} /> : <div className="comic-studio-workspace">
+                                <nav className="comic-studio-rail" aria-label={step === "assets" ? "资产列表" : "分镜列表"}>{(step === "assets" ? workbench.assets : workbench.panels).map((entry, index) => <button type="button" key={entry.id} className="comic-studio-rail-item" aria-pressed={entry.id === (step === "assets" ? activeAsset : activePanel)?.id} onClick={() => workbench.setSelectedId(entry.id)}>
+                                    <span className="comic-studio-rail-index">{step === "assets" ? ({ character: "角", scene: "景", prop: "具" }[entry.assetKind || ""] || index + 1) : index + 1}</span>
+                                    <span className="comic-studio-rail-thumb">{entry.previewUrl ? <MediaPreview src={entry.previewUrl} kind="image" alt="" className="comic-studio-rail-image" loading="lazy" /> : <ImageIcon aria-hidden />}</span>
+                                    <span className="comic-studio-rail-copy"><strong>{entry.title}</strong><small>{itemStatus(entry)}{drafts[entry.id] && (drafts[entry.id].value !== entry.prompt || drafts[entry.id].pendingSave) ? " · 未保存" : ""}</small></span>
                                 </button>)}</nav>
-                                <div className="comic-panel-stage">{activePanel ? renderItem(activePanel, true) : null}</div>
+                                <div className="comic-studio-main">{step === "assets" ? (activeAsset ? renderItem(activeAsset, false) : null) : (activePanel ? renderItem(activePanel, true) : null)}</div>
                             </div>}
                         </div>
                     )}
                 </div>
-                {workbench.project && step !== "source" ? <footer className="comic-model-dock"><span className="comic-field-label">新建图片默认参数</span><span className="comic-model-summary">{configuredModelDisplayName(workbench.imageConfig, workbench.imageConfig.model || workbench.imageConfig.imageModel)} · {imageSettingsSummary(workbench.imageConfig)}</span><Button icon={<SlidersHorizontal />} disabled={disabled} onClick={() => openImageSettings()}>调整默认参数</Button></footer> : null}
             </div>
             <input ref={fileRef} type="file" accept=".txt,text/plain" className="sr-only" aria-label="选择 TXT 文件" onChange={event => { void chooseFile(event.target.files?.[0]); event.currentTarget.value = ""; }} />
             <input ref={referenceFileRef} type="file" accept="image/png,image/jpeg,image/webp,image/gif" multiple className="sr-only" aria-label="选择参考图片" onChange={event => { void uploadReferences(Array.from(event.target.files || [])); event.currentTarget.value = ""; }} />
