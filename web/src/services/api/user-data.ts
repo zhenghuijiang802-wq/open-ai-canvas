@@ -37,6 +37,7 @@ export type RemoteUserDataSnapshot = {
 };
 
 export type CanvasLibrarySummary = Pick<CanvasProject, "id" | "projectId" | "title" | "revision" | "createdAt" | "updatedAt"> & {
+    workflowKind?: "comic";
     nodeCount: number;
     previewNodes: CanvasProject["nodes"];
 };

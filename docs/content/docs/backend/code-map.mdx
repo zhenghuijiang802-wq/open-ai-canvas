@@ -5,6 +5,23 @@ description: 从产品功能快速定位主要代码入口
 
 # 代码功能地图
 
+## 共享渠道与模型选择器
+
+- 创作、图片与视频工作台、画布、短剧制作及 Agent 等入口的共享选择器：`web/src/components/model-picker.tsx`，负责入口按钮先渠道后模型的名称顺序、桌面渠道与模型双栏、手机顶部渠道栏、选中身份归一及分区键盘导航。有效选择（含当前已选型号）后统一收起菜单并将焦点返回入口按钮。
+- 按真实渠道 ID 分组、型号独立列出与同名消歧：`web/src/lib/model-picker-groups.ts`；回归测试：`web/test/model-picker-groups.test.ts`。模型项保留原渠道与模型键的选择值，价格和能力继续按该型号解析；逻辑模型目录标为「平台自动路由」，后台路由语义保持不变。
+- 共享样式：`web/src/styles/shared/model-picker.css`，负责桌面双栏与手机可横滑的顶部渠道栏。模型选择值编码和显式别名解析：`web/src/stores/config-model-options.ts`。
+
+## 通用图片、视频工作台与姿势参考
+
+- 工作台、单一模式入口、资产选择、参考卡片预留空位与放大预览、模型选择旁的参数图标弹层及生成按钮内的积分数字：`web/src/pages/workbench/image-workbench-page.tsx`；保留左输入、中结果、右任务三栏布局及响应式样式：同目录 `workbench.css`。该样式文件同时负责左栏满高、提示词弹性增高、参考素材矩形卡片、内容区内部滚动，以及工具栏不收缩和底部 dock 三控件固定单排。
+- 资产到可提交资源的解析、模型与槽位准入、稳定引用令牌及按媒体类型编号：`web/src/pages/workbench/workbench-assets.ts`；行为回归：`web/test/workbench-assets.test.ts`。
+- 资产选择复用 `web/src/components/assets/asset-library-picker-modal.tsx`；提示词复用 `web/src/components/canvas/canvas-resource-mention-textarea.tsx`。编辑器可选接口 `assetLibraryReferences`、`showAssetLibraryOnEmptyQuery`、`onMentionQueryChange` 支持工作台的可用资产列表、裸 `@` 发现与远端关键词查询，其他调用方保持默认行为。
+- 姿势选择弹窗、素材槽位及普通上传流程桥接：`web/src/pages/workbench/pose-reference-picker.tsx`、`pose-reference-picker.css`。
+- 图库索引、筛选、预览、下载与插件运行时：`web/src/lib/plugins/builtin/pose-gallery/`；独立页面：`web/src/pages/plugins/pose-gallery.tsx`，路由 `/plugins/pose-gallery`。
+- 图库顶部体系标签、固定数量统计、筛选状态与键盘切换：`web/src/lib/plugins/builtin/pose-gallery/entry.js`；标签样式与手机两列布局：同目录 `gallery.css`。
+- 插件注册与外部素材源：`web/src/lib/plugins/builtin/index.ts`、`web/src/hooks/use-external-asset-sources.ts`、`web/src/services/external-asset-sources.ts`。图库为只读源，不接收生成结果写回。
+- 体系完整性回归：`web/test/pose-gallery.test.ts`；覆盖默认四体系、跨体系同编号隔离、体系与视角组合筛选、自定义体系范围。
+
 ## 短剧自动制作
 
 - 纯逻辑：`backend/internal/production/`（作品圣经、分集与剧本提示词 `prompts.go`，模型输出解析 `parse.go`，分镜规则与时长 `storyboard.go` / `timing.go`，按视频模型上限切剧情段 `SegmentShotsForVideo`，段提示词素材稿 `segment_prompt.go` 与撰写要求 `segment_writer.go`，参考图方案 `assets.go`，用户分镜表直接导入 `storyboard_import.go`，原文台词逐句核对 `dialogue_check.go`）。
@@ -260,3 +277,15 @@ HTTP 请求 -> handler -> service（稳定导入面 / 别名）-> app（组合�
 ## 画布外观
 
 `web/src/lib/canvas/canvas-appearance.ts` 管理预设快照、浅深记忆与默认偏好；`web/src/components/canvas/canvas-appearance-controls.tsx` 管理展开与微调；`web/src/components/canvas/canvas-toolbar.tsx` 限制外观和添加节点浮层尺寸。`web/src/stores/canvas/use-canvas-store.ts` 在创建时写入实际外观与线网格默认值，后续沿用画布持久化。
+
+## 漫画制作
+
+`/toolbox/comic` 复用真实画布、标准文本/图片节点、原生 Agent 和后台生成任务。数据合同、作品摘要、任务恢复边界及源码入口见[漫画制作与原生画布](./comic-workbench)。
+
+图片编辑参数与引用纯函数在 `web/src/lib/canvas/comic-image-editing.ts`，交互协调在 `use-comic-workbench.ts`；漫画与图片生成页共用 `workbench-reference-card.tsx`，并直接使用原生图片参数、资源引用输入和媒体版本组件。
+
+`comic-image-card.tsx` 组织资产画廊与分镜输入/结果切换；`comic-style-picker.tsx` 和 `comic-styles.ts` 连接预设卡片、原生我的风格及上传资源。`comic-style.ts` 负责风格选择校验和生成参考去重，`comic-creation-settings.ts` 保存创作控制选项及单镜叙事方向。
+
+### 服装参考图库
+
+`costume-reference-picker.tsx` 使用原生弹窗；`lib/costume-gallery.ts` 校验目录和固定源图片路径；`services/costume-gallery.ts` 按需读取单张原图，通过图片工作台现有上传与数量校验流程加入参考图。

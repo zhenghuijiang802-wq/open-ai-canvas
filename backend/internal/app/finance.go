@@ -615,6 +615,52 @@ func (s *Service) newBillingOrderWithPriceTier(userID string, taskID string, ide
 		return nil, err
 	}
 	if tier == nil {
+		if pricing, pricingErr := s.repo.ModelPricing(channelID, modelKey, capability); pricingErr == nil && pricing != nil {
+			mode := "fixed_request"
+			unitPrice := pricing.PerRequestMicros
+			if (capability == "video" || capability == "audio") && pricing.PerVideoSecondMicros > 0 {
+				mode = "per_second"
+				unitPrice = pricing.PerVideoSecondMicros
+			}
+			if unitPrice > 0 {
+				tier = &model.ChannelModelPriceTier{
+					ID:                    "pricing:" + pricing.ID,
+					ChannelModelID:        item.ID,
+					BillingMode:           mode,
+					UnitPriceMicrocredits: unitPrice,
+					CostPricing: model.CreditCostPricing{
+						Configured:            true,
+						UnitPriceMicrocredits: unitPrice,
+					},
+					PriceConfigured: true,
+					Enabled:         true,
+					PriceVersion:    1,
+				}
+				if pricing.Currency != "" {
+					item.PriceCurrency = pricing.Currency
+				}
+			}
+		}
+	}
+	if tier != nil && tier.UnitPriceMicrocredits == 0 {
+		if pricing, pricingErr := s.repo.ModelPricing(channelID, modelKey, capability); pricingErr == nil && pricing != nil {
+			if tier.BillingMode == "per_second" && pricing.PerVideoSecondMicros > 0 {
+				tier.UnitPriceMicrocredits = pricing.PerVideoSecondMicros
+			} else if pricing.PerRequestMicros > 0 {
+				tier.UnitPriceMicrocredits = pricing.PerRequestMicros
+			}
+			if tier.CostPricing.UnitPriceMicrocredits == 0 {
+				tier.CostPricing.Configured = true
+				tier.CostPricing.UnitPriceMicrocredits = tier.UnitPriceMicrocredits
+			}
+			if pricing.Currency != "" {
+				item.PriceCurrency = pricing.Currency
+			}
+		} else if tier.CostPricing.Configured && tier.CostPricing.UnitPriceMicrocredits > 0 {
+			tier.UnitPriceMicrocredits = tier.CostPricing.UnitPriceMicrocredits
+		}
+	}
+	if tier == nil {
 		return nil, BadAuthRequest("当前模型尚未配置所选规格的用户积分价格")
 	}
 	quantity := int64(1)

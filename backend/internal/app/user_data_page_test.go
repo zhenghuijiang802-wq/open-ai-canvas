@@ -74,6 +74,44 @@ func TestUserAssetsBatchIsBoundedAndScoped(t *testing.T) {
 	}
 }
 
+func TestUserCanvasLibraryPageDetectsComicAfterPreviewNodes(t *testing.T) {
+	service, db := newProjectWorkbenchReadTestService(t)
+	for _, test := range []struct {
+		id, nodeType, comic string
+		want                string
+	}{
+		{"comic", "text", `{"version":1,"role":"source","settings":{"style":"PRIVATE_SENTINEL"}}`, "comic"},
+		{"future", "text", `{"version":2,"role":"source"}`, ""},
+		{"image-source", "image", `{"version":1,"role":"source"}`, ""},
+		{"asset-only", "image", `{"version":1,"role":"asset","assetKind":"character"}`, ""},
+	} {
+		nodes := make([]map[string]any, 0, 5)
+		for i := 0; i < 4; i++ {
+			nodes = append(nodes, map[string]any{"id": fmt.Sprintf("preview-%d", i), "type": "image", "metadata": map[string]any{"storageKey": "resource:preview"}})
+		}
+		var comic map[string]any
+		if err := json.Unmarshal([]byte(test.comic), &comic); err != nil {
+			t.Fatal(err)
+		}
+		nodes = append(nodes, map[string]any{"id": "source", "type": test.nodeType, "metadata": map[string]any{"comic": comic, "content": "PRIVATE_SENTINEL"}})
+		raw, _ := json.Marshal(map[string]any{"nodes": nodes})
+		if err := db.Create(&model.CanvasProject{ID: test.id, UserID: "owner", Title: test.id, PayloadJSON: string(raw)}).Error; err != nil {
+			t.Fatal(err)
+		}
+		page, err := service.UserCanvasProjectsPage("owner", 1, 40, "", test.id, "name")
+		if err != nil || len(page.Projects) != 1 {
+			t.Fatalf("read %s: %+v, %v", test.id, page, err)
+		}
+		if page.Projects[0].WorkflowKind != test.want || len(page.Projects[0].PreviewNodes) != 4 {
+			t.Fatalf("wrong comic summary for %s: %+v", test.id, page.Projects[0])
+		}
+		encoded, _ := json.Marshal(page.Projects[0])
+		if strings.Contains(string(encoded), "PRIVATE_SENTINEL") || (test.want == "" && strings.Contains(string(encoded), "workflowKind")) {
+			t.Fatalf("summary exposed metadata or a false marker: %s", encoded)
+		}
+	}
+}
+
 func TestUploadedProjectAssetReadPathsReturnWritableDocument(t *testing.T) {
 	service, db := newProjectWorkbenchReadTestService(t)
 	asset := model.Asset{

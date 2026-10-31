@@ -52,7 +52,7 @@ export function createHostedAssetSources(installations: PluginInstallation[]): H
 
 export async function uploadGeneratedAssetToConfiguredSources(asset: Asset, signal?: AbortSignal): Promise<ExternalAssetSyncResult> {
     const installations = usePluginStore.getState().installations;
-    const autoUploadInstallations = installations.filter((installation) => isPluginEffectivelyEnabled(installation.manifest.id, installation.enabled) && isAutoUploadEnabled(installation.config.autoUploadGenerated));
+    const autoUploadInstallations = installations.filter((installation) => installation.manifest.id !== "ai-pose-gallery-zh" && isPluginEffectivelyEnabled(installation.manifest.id, installation.enabled) && isAutoUploadEnabled(installation.config.autoUploadGenerated));
     if (!autoUploadInstallations.length) return { records: readSyncRecords(asset), uploaded: [], failures: [] };
 
     const sources = createHostedAssetSources(installations);

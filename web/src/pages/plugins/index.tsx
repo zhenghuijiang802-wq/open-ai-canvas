@@ -417,6 +417,7 @@ export default function PluginsPage() {
                                                                 </button>
 
                                                                 <div className="plugin-card-actions">
+                                                                    {plugin.manifest.id === "ai-pose-gallery-zh" && <Button onClick={() => navigate("/plugins/pose-gallery")}>打开姿势图库</Button>}
                                                                     <span role="status" className={`settings-channel-status ${enabled ? "is-ready" : ""}`}>
                                                                         <i aria-hidden="true" />
                                                                         {!state?.platformAvailable && state?.blockedReason ? state.blockedReason : enabled ? "已启用" : "已停用"}

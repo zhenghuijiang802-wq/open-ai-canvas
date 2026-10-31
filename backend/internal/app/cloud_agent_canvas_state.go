@@ -7,6 +7,7 @@ import (
 
 	"yingce/backend/internal/assets"
 	"yingce/backend/internal/canvas/capability"
+	"yingce/backend/internal/canvas/contract"
 	"yingce/backend/internal/repository"
 )
 
@@ -329,6 +330,9 @@ func cloudAgentCanvasStateSelected(repo *repository.Repository, userID, canvasID
 		}
 		for key, value := range projected {
 			item[key] = value
+		}
+		if comic := contract.ComicNodeProjection(node); comic != nil {
+			item["comic"] = comic
 		}
 		if cloudAgentCharacterNode(node) {
 			if repo == nil {

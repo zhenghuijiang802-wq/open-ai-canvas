@@ -1,0 +1,715 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "ecommerce-image-studio",
+  "name": "电商图工作室",
+  "version": "1.0.0",
+  "author": "Custom Plugin",
+  "description": "基于商品参考图制作主图、场景、卖点、细节、SKU与横幅；统一风格及文案控制。",
+  "documentation": "# 电商图工作室 · 影策插件\n\n通过商品参考图生成白底主图、使用场景图、核心卖点图、材质细节图、SKU规格图及活动横幅图。使用影策原生生图参数面板，无额外网页或独立服务。\n\n## 安装和配置\n\n1. 影策管理员进入 `/admin/plugins`，上传 `ecommerce-image-studio-1.0.0.yingce-plugin` 并启用。\n2. 在系统渠道或自定义渠道中选择「电商图工作室 · 商品参考图生成」协议，配置自己的 API Key 和 Base URL。默认地址是 `https://api.openai.com`；兼容服务必须支持 JSON 形式的 `POST /v1/images/edits`（`images: [{image_url: ...}]`），仅支持 multipart 的服务不兼容本版。\n3. 添加该服务实际支持的图片编辑模型 ID，启用 image 能力及插件参数。不要将插件 ID 当作模型 ID。模型和服务必须支持参考图、PNG输出及所选尺寸/质量。\n4. 在画布上传商品图，并将图片节点连接到生图节点作为参考；或在创作页添加参考图。选择上一步模型。\n5. 填入商品名称、真实卖点和画面需求，在参数中选择图片用途、风格、文案处理、尺寸和候选数量，然后生成。\n\n本包只声明协议；不会附带密钥、购买额度或自动绑定你已有的其他模型渠道。真实生成按所配服务计费。普通用户安装权限以宿主版本与管理员设置为准。\n\n## 使用方式\n\n- 至少1张、最多6张参考图；第一张为商品身份依据。应选择清晰、无遮挡的商品图。\n- 图片用途：6种；风格：简洁棚拍、温暖生活、冷调科技、深色质感。\n- 文案：默认不生成文字；可仅留文案区，或使用用户指定的文案。商品包装原有文字仍要求保留。\n- 白底主图默认不加文案。需要图上文案时请选择卖点图或横幅图。\n- 默认尺寸1024×1024；竖图1024×1536、横图1536×1024。横幅图需手动选择横向尺寸。\n- 同款候选数量1–4，仅生成当前图型的候选，不代表一次生成整套6种图。\n- 制作系列：重复使用同一组商品参考图、风格和品牌视觉约束，逐次切换图片用途。该约束有助于一致性，但不能保证像素级复刻。\n- SKU模式仅整理真实提供的款式；不要用单张商品图推测其他款式。细节模式只展示参考图中可见的结构。\n\n商品事实写在提示词框；风格/图型由插件自动追加，不必粘贴长提示词。示例见 `docs/example-brief.txt`。\n\n## 输出与限制\n\n图片由影策现有任务和素材流程接收；支持上游返回图片URL或PNG Base64。插件不修改原始商品图。\n它不含抠图算法、图文后期排版、自动整套批量队列或详情页长图拼接。AI可能改变包装细字、局部形状或纹理，上架前应检查商品外观、文案、尺寸和平台要求；插件不声称自动满足所有电商平台规范。\n\n## 开发\n\n源码 `build.py` 从 `source/openai-images.manifest.json` 构建，Python标准库即可：`python build.py`。安装包是ZIP，清单位于根目录；所有模板在 `build.py` 中，修改后重新构建。\n协议基于 https://github.com/ddcat-ai/open-ai-canvas 的官方 OpenAI Images 插件，保留其MIT许可证；兼容性和验证记录见 `docs/COMPATIBILITY.md`。\n",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "API Key",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "ecommerce-image-studio",
+        "label": "电商图工作室 · 商品参考图生成",
+        "capabilities": [
+          "image"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://api.openai.com",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "imageParameters": [
+          {
+            "name": "scene",
+            "label": "图片用途",
+            "type": "string",
+            "binding": "providerOptions.ecommerce-image-studio.scene",
+            "values": [
+              "白底主图",
+              "使用场景图",
+              "核心卖点图",
+              "材质细节图",
+              "SKU规格图",
+              "活动横幅图"
+            ],
+            "default": "白底主图"
+          },
+          {
+            "name": "style",
+            "label": "整套视觉风格",
+            "type": "string",
+            "binding": "providerOptions.ecommerce-image-studio.style",
+            "values": [
+              "简洁棚拍",
+              "温暖生活",
+              "冷调科技",
+              "深色质感"
+            ],
+            "default": "简洁棚拍"
+          },
+          {
+            "name": "textMode",
+            "label": "文案处理",
+            "type": "string",
+            "binding": "providerOptions.ecommerce-image-studio.textMode",
+            "values": [
+              "不生成文字",
+              "仅留文案区",
+              "使用指定文案"
+            ],
+            "default": "不生成文字"
+          },
+          {
+            "name": "copy",
+            "label": "指定文案",
+            "type": "string",
+            "binding": "providerOptions.ecommerce-image-studio.copy",
+            "maxLength": 300,
+            "default": ""
+          },
+          {
+            "name": "brand",
+            "label": "品牌视觉约束",
+            "type": "string",
+            "binding": "providerOptions.ecommerce-image-studio.brand",
+            "maxLength": 500,
+            "default": "",
+            "description": "例如：统一米白背景 #F5F1E8；保留包装颜色。同套图片保持此项不变。"
+          },
+          {
+            "name": "size",
+            "label": "图片尺寸",
+            "type": "string",
+            "binding": "aspectRatio",
+            "encoding": "pixels",
+            "values": [
+              "1024x1024",
+              "1024x1536",
+              "1536x1024"
+            ],
+            "default": "1024x1024",
+            "pricing": true
+          },
+          {
+            "name": "quality",
+            "label": "图片质量",
+            "type": "string",
+            "binding": "quality",
+            "values": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "default": "medium",
+            "pricing": true
+          },
+          {
+            "name": "count",
+            "label": "同款候选数量",
+            "type": "integer",
+            "binding": "imageCount",
+            "min": 1,
+            "max": 4,
+            "step": 1,
+            "default": 1
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "图片模型 ID。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "图片提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": true,
+            "mapping": "provider image/reference fields",
+            "description": "至少一张商品原图；第一张是商品身份依据。"
+          },
+          {
+            "name": "imageCount",
+            "type": "integer",
+            "required": false,
+            "mapping": "n/sample_count",
+            "description": "输出数量。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "size/aspect_ratio",
+            "description": "比例或尺寸，语义按协议说明。"
+          },
+          {
+            "name": "quality",
+            "type": "string",
+            "required": false,
+            "mapping": "quality",
+            "description": "质量档位。"
+          },
+          {
+            "name": "providerOptions",
+            "type": "object",
+            "required": false,
+            "mapping": "provider-specific fields",
+            "description": "插件命名空间内的厂商扩展字段。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/images/edits",
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$concat": [
+                "你正在制作真实商品电商图。第一张参考图决定商品身份，其余参考图只补充视角和已证实的SKU。保持外形、比例、结构、数量、颜色、材质、包装与品牌标识一致；不擅自改款。\n统一风格：",
+                {
+                  "$if": {
+                    "condition": {
+                      "$eq": [
+                        {
+                          "$coalesce": [
+                            {
+                              "$ref": "request.providerOptions.ecommerce-image-studio.style"
+                            },
+                            "简洁棚拍"
+                          ]
+                        },
+                        "简洁棚拍"
+                      ]
+                    },
+                    "then": "柔和大面积棚灯，细腻真实材质，中性白平衡，背景 #FFFFFF，文字色 #2D2D2D。",
+                    "else": {
+                      "$if": {
+                        "condition": {
+                          "$eq": [
+                            {
+                              "$coalesce": [
+                                {
+                                  "$ref": "request.providerOptions.ecommerce-image-studio.style"
+                                },
+                                "简洁棚拍"
+                              ]
+                            },
+                            "温暖生活"
+                          ]
+                        },
+                        "then": "自然窗光，暖中性色，背景 #F5F1E8，低饱和环境，真实生活摄影。",
+                        "else": {
+                          "$if": {
+                            "condition": {
+                              "$eq": [
+                                {
+                                  "$coalesce": [
+                                    {
+                                      "$ref": "request.providerOptions.ecommerce-image-studio.style"
+                                    },
+                                    "简洁棚拍"
+                                  ]
+                                },
+                                "冷调科技"
+                              ]
+                            },
+                            "then": "冷中性棚光，背景 #EEF2F6，克制的几何构图，真实工业材质；不添加虚构发光结构。",
+                            "else": {
+                              "$if": {
+                                "condition": {
+                                  "$eq": [
+                                    {
+                                      "$coalesce": [
+                                        {
+                                          "$ref": "request.providerOptions.ecommerce-image-studio.style"
+                                        },
+                                        "简洁棚拍"
+                                      ]
+                                    },
+                                    "深色质感"
+                                  ]
+                                },
+                                "then": "深色背景 #1A1A1A，柔和侧光与轮廓光，控制高光，保留商品真实颜色。",
+                                "else": "柔和大面积棚灯，细腻真实材质，中性白平衡，背景 #FFFFFF，文字色 #2D2D2D。"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "\n品牌视觉约束：",
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.providerOptions.ecommerce-image-studio.brand"
+                    },
+                    "未指定"
+                  ]
+                },
+                "\n图型要求（白底主图的纯白背景优先于风格背景）：",
+                {
+                  "$if": {
+                    "condition": {
+                      "$eq": [
+                        {
+                          "$coalesce": [
+                            {
+                              "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                            },
+                            "白底主图"
+                          ]
+                        },
+                        "白底主图"
+                      ]
+                    },
+                    "then": "白底商品主图。背景纯白 #FFFFFF，单一商品主体居中，完整呈现，柔和自然接触阴影；默认商品占画面约 40%，留白至少 45%。不加道具、文字或装饰。用户提供明确平台占比要求时遵循该要求。",
+                    "else": {
+                      "$if": {
+                        "condition": {
+                          "$eq": [
+                            {
+                              "$coalesce": [
+                                {
+                                  "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                                },
+                                "白底主图"
+                              ]
+                            },
+                            "使用场景图"
+                          ]
+                        },
+                        "then": "真实使用场景图。依据商品用途选择合理环境，商品清晰且为视觉焦点，默认占画面 25%，留白至少 50%。只添加使用所需的少量环境物件，不能让道具看起来是附赠品。",
+                        "else": {
+                          "$if": {
+                            "condition": {
+                              "$eq": [
+                                {
+                                  "$coalesce": [
+                                    {
+                                      "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                                    },
+                                    "白底主图"
+                                  ]
+                                },
+                                "核心卖点图"
+                              ]
+                            },
+                            "then": "单一核心卖点图。左侧商品占画面约 30%，右侧预留至少 45%干净文案区。只视觉化用户提供且参考图支持的卖点；不捏造认证、实验数据、对比效果或性能。",
+                            "else": {
+                              "$if": {
+                                "condition": {
+                                  "$eq": [
+                                    {
+                                      "$coalesce": [
+                                        {
+                                          "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                                        },
+                                        "白底主图"
+                                      ]
+                                    },
+                                    "材质细节图"
+                                  ]
+                                },
+                                "then": "商品材质与工艺细节特写。只放大参考图可见的真实结构、接缝或表面纹理，主体清晰，景深自然，预留 45%干净区域。不臆造内部构造或不可见零件，不编造剖面图。",
+                                "else": {
+                                  "$if": {
+                                    "condition": {
+                                      "$eq": [
+                                        {
+                                          "$coalesce": [
+                                            {
+                                              "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                                            },
+                                            "白底主图"
+                                          ]
+                                        },
+                                        "SKU规格图"
+                                      ]
+                                    },
+                                    "then": "SKU规格展示图。只展示上传图片或说明中确实存在的款式与颜色；按一致视角、尺度和间距排列，商品组占画面约 65%。只有一个款式时仅展示一个，不推测尺寸或虚构颜色。",
+                                    "else": {
+                                      "$if": {
+                                        "condition": {
+                                          "$eq": [
+                                            {
+                                              "$coalesce": [
+                                                {
+                                                  "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                                                },
+                                                "白底主图"
+                                              ]
+                                            },
+                                            "活动横幅图"
+                                          ]
+                                        },
+                                        "then": "横幅广告构图。商品置于右侧，占画面约 40%，左侧至少 45%留白用于文案，边缘保留 8%安全区。不添加用户未提供的价格、优惠幅度、销量或促销标签。",
+                                        "else": "白底商品主图。背景纯白 #FFFFFF，单一商品主体居中，完整呈现，柔和自然接触阴影；默认商品占画面约 40%，留白至少 45%。不加道具、文字或装饰。用户提供明确平台占比要求时遵循该要求。"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "\n文字要求：",
+                {
+                  "$if": {
+                    "condition": {
+                      "$eq": [
+                        {
+                          "$coalesce": [
+                            {
+                              "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                            },
+                            "白底主图"
+                          ]
+                        },
+                        "白底主图"
+                      ]
+                    },
+                    "then": "不新增任何文字、数字或图标；保留商品本身已有且可见的包装文字与标识。",
+                    "else": {
+                      "$if": {
+                        "condition": {
+                          "$eq": [
+                            {
+                              "$coalesce": [
+                                {
+                                  "$ref": "request.providerOptions.ecommerce-image-studio.textMode"
+                                },
+                                "不生成文字"
+                              ]
+                            },
+                            "不生成文字"
+                          ]
+                        },
+                        "then": "不新增任何文字、数字或图标；保留商品本身已有且可见的包装文字与标识。",
+                        "else": {
+                          "$if": {
+                            "condition": {
+                              "$eq": [
+                                {
+                                  "$coalesce": [
+                                    {
+                                      "$ref": "request.providerOptions.ecommerce-image-studio.textMode"
+                                    },
+                                    "不生成文字"
+                                  ]
+                                },
+                                "仅留文案区"
+                              ]
+                            },
+                            "then": "仅预留干净文案区，不实际绘制文案，供后期排版。保留商品原有标识。",
+                            "else": {
+                              "$if": {
+                                "condition": {
+                                  "$eq": [
+                                    {
+                                      "$coalesce": [
+                                        {
+                                          "$ref": "request.providerOptions.ecommerce-image-studio.textMode"
+                                        },
+                                        "不生成文字"
+                                      ]
+                                    },
+                                    "使用指定文案"
+                                  ]
+                                },
+                                "then": "仅可绘制下方用户明确提供的文案，不自行编写。未提供则不绘制。标题建议不超过15字，卖点最多3条，CTA不超过8字；层级清晰，不遮挡商品。文字准确性需人工复核。",
+                                "else": "不新增任何文字、数字或图标；保留商品本身已有且可见的包装文字与标识。"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "\n指定文案：",
+                {
+                  "$if": {
+                    "condition": {
+                      "$and": [
+                        {
+                          "$ne": [
+                            {
+                              "$coalesce": [
+                                {
+                                  "$ref": "request.providerOptions.ecommerce-image-studio.scene"
+                                },
+                                "白底主图"
+                              ]
+                            },
+                            "白底主图"
+                          ]
+                        },
+                        {
+                          "$eq": [
+                            {
+                              "$coalesce": [
+                                {
+                                  "$ref": "request.providerOptions.ecommerce-image-studio.textMode"
+                                },
+                                "不生成文字"
+                              ]
+                            },
+                            "使用指定文案"
+                          ]
+                        }
+                      ]
+                    },
+                    "then": {
+                      "$coalesce": [
+                        {
+                          "$ref": "request.providerOptions.ecommerce-image-studio.copy"
+                        },
+                        "未提供"
+                      ]
+                    },
+                    "else": "未启用，禁止新增文案"
+                  }
+                },
+                "\n商品事实与本张需求：",
+                {
+                  "$ref": "request.prompt"
+                },
+                "\n禁止新增水印、假logo、虚构认证、未提供的价格销量、医疗效果、假对比和无依据参数。禁止改变商品结构、增加零件、复制商品或出现畸形边缘。品牌原有文字不属于新增文案。同一套图保持一致色温、光线与材质表达。只生成一幅完整图片，不做拼接长图或多格画册。"
+              ]
+            },
+            "images": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$gt": [
+                      {
+                        "$len": {
+                          "$ref": "request.images"
+                        }
+                      },
+                      0
+                    ]
+                  },
+                  "then": {
+                    "$map": {
+                      "from": {
+                        "$filter": {
+                          "from": {
+                            "$sortByOrder": {
+                              "$ref": "request.images"
+                            }
+                          },
+                          "as": "media",
+                          "where": {
+                            "$ne": [
+                              {
+                                "$ref": "media.role"
+                              },
+                              "mask"
+                            ]
+                          }
+                        }
+                      },
+                      "as": "media",
+                      "in": {
+                        "image_url": {
+                          "$ref": "media.value"
+                        }
+                      }
+                    }
+                  },
+                  "else": null
+                }
+              }
+            },
+            "n": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.imageCount"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.imageCount"
+                },
+                "else": 1
+              }
+            },
+            "size": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "1024x1024"
+              ]
+            },
+            "quality": {
+              "$coalesce": [
+                {
+                  "$ref": "request.quality"
+                },
+                "medium"
+              ]
+            },
+            "output_format": "png"
+          }
+        },
+        "response": {
+          "status": "succeeded",
+          "images": {
+            "$map": {
+              "from": {
+                "$ref": "response.data"
+              },
+              "as": "item",
+              "in": {
+                "url": {
+                  "$omitEmpty": {
+                    "$ref": "item.url"
+                  }
+                },
+                "dataUrl": {
+                  "$if": {
+                    "condition": {
+                      "$ref": "item.b64_json"
+                    },
+                    "then": {
+                      "$concat": [
+                        "data:image/png;base64,",
+                        {
+                          "$ref": "item.b64_json"
+                        }
+                      ]
+                    },
+                    "else": null
+                  }
+                }
+              }
+            }
+          },
+          "usage": {
+            "$ref": "response.usage"
+          },
+          "errorPaths": [
+            "error.code"
+          ],
+          "messagePaths": [
+            "error.message"
+          ]
+        },
+        "validations": [
+          {
+            "assert": {
+              "$gt": [
+                {
+                  "$len": {
+                    "$ref": "request.images"
+                  }
+                },
+                0
+              ]
+            },
+            "message": "请先上传并连接至少一张商品参考图。"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$len": {
+                    "$ref": "request.images"
+                  }
+                },
+                6
+              ]
+            },
+            "message": "每次最多使用6张商品参考图。"
+          },
+          {
+            "assert": {
+              "$eq": [
+                {
+                  "$len": {
+                    "$filter": {
+                      "from": {
+                        "$ref": "request.images"
+                      },
+                      "as": "media",
+                      "where": {
+                        "$eq": [
+                          {
+                            "$ref": "media.role"
+                          },
+                          "mask"
+                        ]
+                      }
+                    }
+                  }
+                },
+                0
+              ]
+            },
+            "message": "本插件暂不支持遮罩图，请仅上传商品参考图。"
+          },
+          {
+            "assert": {
+              "$lte": [
+                {
+                  "$coalesce": [
+                    {
+                      "$ref": "request.imageCount"
+                    },
+                    1
+                  ]
+                },
+                4
+              ]
+            },
+            "message": "每次最多生成4张候选图。"
+          }
+        ]
+      }
+    ]
+  }
+}

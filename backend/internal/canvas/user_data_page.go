@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
+	"yingce/backend/internal/canvas/contract"
 	"yingce/backend/internal/kernel"
 )
 
@@ -44,6 +45,7 @@ type CanvasLibrarySummary struct {
 	CreatedAt    time.Time        `json:"createdAt"`
 	UpdatedAt    time.Time        `json:"updatedAt"`
 	NodeCount    int              `json:"nodeCount"`
+	WorkflowKind string           `json:"workflowKind,omitempty"`
 	PreviewNodes []map[string]any `json:"previewNodes"`
 }
 
@@ -81,9 +83,15 @@ func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, 
 			return CanvasLibraryPage{}, err
 		}
 		preview := make([]map[string]any, 0, 4)
+		workflowKind := ""
 		for _, node := range document.Nodes {
+			if node["type"] == "text" {
+				if comic := contract.ComicNodeMetadata(node); comic != nil && comic["role"] == "source" {
+					workflowKind = "comic"
+				}
+			}
 			if len(preview) == 4 {
-				break
+				continue
 			}
 			if node["type"] != "image" && node["type"] != "video" {
 				continue
@@ -108,7 +116,7 @@ func (s *Service) UserCanvasProjectsPage(userID string, page int, pageSize int, 
 			item["metadata"] = metadata
 			preview = append(preview, item)
 		}
-		result.Projects = append(result.Projects, CanvasLibrarySummary{ID: project.ID, ProjectID: project.ProjectID, Title: project.Title, Revision: project.Revision, CreatedAt: project.CreatedAt, UpdatedAt: project.UpdatedAt, NodeCount: len(document.Nodes), PreviewNodes: preview})
+		result.Projects = append(result.Projects, CanvasLibrarySummary{ID: project.ID, ProjectID: project.ProjectID, Title: project.Title, Revision: project.Revision, CreatedAt: project.CreatedAt, UpdatedAt: project.UpdatedAt, NodeCount: len(document.Nodes), PreviewNodes: preview, WorkflowKind: workflowKind})
 	}
 	return result, nil
 }

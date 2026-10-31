@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import "@/lib/plugins/builtin/pose-gallery/plugin";
 
 import type { AssetLibraryPickerFolder, AssetLibraryPickerItem } from "@/components/assets/asset-library-picker-modal";
 import { createHostedAssetSources, type HostedAssetSource } from "@/services/external-asset-sources";
@@ -69,7 +70,7 @@ export function useExternalAssetSources(open: boolean): ExternalAssetSourceState
             try {
                 const [folders, items] = await Promise.all([
                     source.provider.listFolders?.(controller.signal) || Promise.resolve([]),
-                    source.provider.list?.({ limit: 200, offset: 0, signal: controller.signal }) || Promise.resolve([]),
+                    source.provider.list?.({ limit: source.id === "ai-pose-gallery-zh" ? 5000 : 200, offset: 0, signal: controller.signal }) || Promise.resolve([]),
                 ]);
                 return { source, folders: folders || [], items: items || [] };
             } catch (reason) {

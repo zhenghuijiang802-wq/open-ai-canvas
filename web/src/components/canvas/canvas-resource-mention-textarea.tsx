@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ClipboardEvent, DragEvent, KeyboardEvent, TextareaHTMLAttributes } from "react";
 import { createPortal } from "react-dom";
 import { observeMovablePopupAnchor } from "@/lib/movable-popup-anchor";
@@ -49,6 +49,9 @@ type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, "onChange" | "val
     sendOnEnter?: boolean | "both";
     onContentSizeChange?: (height: number) => void;
     includeAssetLibrary?: boolean;
+    assetLibraryReferences?: CanvasResourceReference[];
+    showAssetLibraryOnEmptyQuery?: boolean;
+    onMentionQueryChange?: (query: string | null) => void;
     activeDropReferenceId?: string | null;
     onReferenceFilesDrop?: (reference: CanvasResourceReference, files: File[]) => void;
     autoLinkEnabled?: boolean;
@@ -65,7 +68,7 @@ function shouldSubmitOnEnter(event: { key: string; ctrlKey: boolean; metaKey: bo
 }
 
 export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Props>(function CanvasResourceMentionTextarea(
-    { value, references, onSelectReference, onChange, onSubmit, onKeyDown, className, containerClassName, style, highlightLabels = true, mentionMenuWidth = 320, sendOnEnter = true, onContentSizeChange, includeAssetLibrary = false, activeDropReferenceId, onReferenceFilesDrop, autoLinkEnabled = false, mentionMenuLabels, ...props },
+    { value, references, onSelectReference, onChange, onSubmit, onKeyDown, className, containerClassName, style, highlightLabels = true, mentionMenuWidth = 320, sendOnEnter = true, onContentSizeChange, includeAssetLibrary = false, assetLibraryReferences, showAssetLibraryOnEmptyQuery = false, onMentionQueryChange, activeDropReferenceId, onReferenceFilesDrop, autoLinkEnabled = false, mentionMenuLabels, ...props },
     forwardedRef,
 ) {
     const rawTheme = useActiveTheme();
@@ -83,6 +86,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
     const pendingScrollTopRef = useRef<number | null>(null);
     const lastRenderedValueRef = useRef("");
     const [mention, setMention] = useState<MentionState | null>(null);
+    useEffect(() => { onMentionQueryChange?.(mention?.query ?? null); }, [mention?.query, onMentionQueryChange]);
     const [activeIndex, setActiveIndex] = useState(-1);
     const [autoLinkCursor, setAutoLinkCursor] = useState<number | null>(null);
     const autoLinkSuggestionRef = useRef<HTMLButtonElement | null>(null);
@@ -90,7 +94,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
     const [nativeDropReferenceId, setNativeDropReferenceId] = useState<string | null>(null);
     const [previewReference, setPreviewReference] = useState<CanvasResourceReference | null>(null);
     const canvasReferences = useResolvedCanvasResourceReferences(references);
-    const rawAssetReferences = useMemo(() => includeAssetLibrary ? buildAssetMentionReferences(assets) : [], [assets, includeAssetLibrary]);
+    const rawAssetReferences = useMemo(() => includeAssetLibrary ? assetLibraryReferences ?? buildAssetMentionReferences(assets) : [], [assetLibraryReferences, assets, includeAssetLibrary]);
     const assetReferences = useResolvedCanvasResourceReferences(rawAssetReferences);
     const activeCanvasReferences = useMemo(() => canvasReferences.filter((item) => item.active), [canvasReferences]);
     // 工具标签只能经九宫格等面板入口插入，@ 引用菜单不再重复展示。
@@ -100,9 +104,9 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
     const candidates = useMemo(() => {
         if (!mention) return [];
         const query = mention.query.trim().toLowerCase();
-        if (!query) return onSelectReference ? mentionCanvasReferences : activeMentionCanvasReferences;
+        if (!query) return showAssetLibraryOnEmptyQuery ? availableReferences : onSelectReference ? mentionCanvasReferences : activeMentionCanvasReferences;
         return availableReferences.filter((item) => `${item.label} ${item.title} ${item.kind} ${item.category || ""} ${item.text || ""}`.toLowerCase().includes(query));
-    }, [onSelectReference, mentionCanvasReferences, activeMentionCanvasReferences, availableReferences, mention]);
+    }, [onSelectReference, mentionCanvasReferences, activeMentionCanvasReferences, availableReferences, mention, showAssetLibraryOnEmptyQuery]);
     const activeReferences = useMemo(() => {
         if (!highlightLabels) return [];
         return [...activeCanvasReferences, ...assetReferences.filter((item) => value.includes(canvasResourceMentionToken(item)))];
@@ -252,7 +256,7 @@ export const CanvasResourceMentionTextarea = forwardRef<HTMLTextAreaElement, Pro
         setAutoLinkCursor(cursor);
         const prefix = nextValue.slice(0, cursor);
         const match = /@([^\s@,.;:!?，。；：！？、)\]}】）]*)$/.exec(prefix);
-        if (!match || !availableReferences.length) {
+        if (!match || (!availableReferences.length && !onMentionQueryChange)) {
             closeMention();
             return;
         }

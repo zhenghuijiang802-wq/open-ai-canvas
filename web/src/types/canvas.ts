@@ -284,9 +284,58 @@ export type CanvasDramaRef = {
     baseResourceId?: string;
 };
 
+export type CanvasComicImageDefaults = {
+    model?: string;
+    size?: string;
+    quality?: string;
+    imageResolution?: string;
+    transparentBackground?: string;
+    count?: string;
+    imageParameters?: string;
+};
+
+export type CanvasComicSettings = {
+    style: string;
+    aspectRatio: string;
+    panelCount: number | "auto";
+    storyType?: string;
+    emotionTone?: string;
+    narrativePreset?: string;
+    imageDefaults?: CanvasComicImageDefaults;
+    styleSelection?: CanvasComicStyleSelection;
+};
+
+export type CanvasComicStyleSelection = {
+    id: string;
+    title: string;
+    coverUrl?: string;
+    referenceResourceId?: string;
+};
+
+type CanvasComicImageSettings = {
+    useUnifiedStyle?: boolean;
+    /** Only a known generated prefix is removable; authored prompt text is never rewritten. */
+    promptStylePrefix?: string;
+};
+
+export type CanvasComicMetadata =
+    | {
+          version: 1;
+          role: "source";
+          settings: CanvasComicSettings;
+          derivationTaskId?: string;
+          derivationOperationId?: string;
+          derivationFingerprint?: string;
+          derivationError?: string;
+          derivationStatus?: "pending" | "running" | "succeeded" | "failed";
+      }
+    | ({ version: 1; role: "asset"; assetKind: "character" | "scene" | "prop"; order: number } & CanvasComicImageSettings)
+    | ({ version: 1; role: "panel"; order: number; sourceExcerpt?: string; assetNodeIds?: string[] } & CanvasComicImageSettings);
+
 export type CanvasNodeMetadata = {
     /** Credential-free editable generation contract; submitted recipes live with tasks. */
     generationSpec?: GenerationSpec;
+    comic?: CanvasComicMetadata;
     dramaRef?: CanvasDramaRef;
     /** Namespaced extension ownership for nodes contributed by a unified plugin. */
     pluginId?: string;

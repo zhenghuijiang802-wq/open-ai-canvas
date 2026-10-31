@@ -40,6 +40,26 @@ function fixture() {
 
 const requirements: ModelRequirements = { capability: "video", videoSeconds: "5", options: { vquality: "1080p" } };
 
+test("model triggers show the selected public channel before the exact model name in both variants", () => {
+    const config = fixture();
+    config.channels[0].name = "系统模型";
+    config.channels[0].modelCosts![0].channelLabel = "LensAPI专线";
+    for (const variant of ["default", "creation"] as const) {
+        const markup = renderToStaticMarkup(<ModelPicker config={config} value="comfy::h3-multi" capability="video" variant={variant} onChange={() => {}} showSelectedPrice={false} />);
+        expect(markup).toContain('title="LensAPI专线 · MiniMax H3"');
+        expect(markup).toContain(">LensAPI专线 · MiniMax H3</span>");
+        expect(markup).not.toContain("系统模型 ·");
+        expect(markup).not.toContain("MiniMax H3 · LensAPI专线");
+    }
+    config.channels[0].name = "个人专线";
+    config.channels[0].scope = "user";
+    const personal = renderToStaticMarkup(<ModelPicker config={config} value="comfy::h3-multi" capability="video" onChange={() => {}} showSelectedPrice={false} />);
+    expect(personal).toContain('title="个人专线 · MiniMax H3"');
+    const empty = renderToStaticMarkup(<ModelPicker config={config} value="missing::model" capability="video" placeholder="请选择视频模型" onChange={() => {}} showSelectedPrice={false} />);
+    expect(empty).toContain('title="请选择视频模型"');
+    expect(empty).not.toContain("个人专线 ·");
+});
+
 test("candidate rows show their configured prices instead of applying the previous model's specifications", () => {
     const config = fixture();
     for (const theme of [canvasThemes.light, canvasThemes.dark]) {

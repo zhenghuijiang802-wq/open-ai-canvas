@@ -557,10 +557,12 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     cursor: pointer;
     transition: background-color 150ms ease;
 }
-.canvas-model-picker-menu .canvas-model-picker-brand[aria-pressed="true"] {
+.canvas-model-picker-menu .canvas-model-picker-brand[aria-pressed="true"],
+.canvas-model-picker-menu .canvas-model-picker-brand[aria-selected="true"] {
     background: color-mix(in srgb, currentColor 6%, transparent);
 }
-.canvas-model-picker-menu .canvas-model-picker-brand[aria-pressed="true"] .canvas-model-picker-brand-arrow {
+.canvas-model-picker-menu .canvas-model-picker-brand[aria-pressed="true"] .canvas-model-picker-brand-arrow,
+.canvas-model-picker-menu .canvas-model-picker-brand[aria-selected="true"] .canvas-model-picker-brand-arrow {
     color: color-mix(in srgb, currentColor 72%, transparent);
 }
 .canvas-model-picker-brand:focus-visible {
@@ -673,9 +675,23 @@ html:not(.dark) .creation-home .creation-chat-composer .creation-model-picker.ca
     }
     .canvas-model-picker-two-pane {
         grid-template-columns: minmax(0, 1fr);
+        grid-template-rows: auto minmax(0, 1fr);
     }
     .canvas-model-picker-menu.is-model-list .canvas-model-picker-brand-rail {
-        display: none;
+        display: flex;
+        align-content: normal;
+        overflow-x: auto;
+        overflow-y: hidden;
+        border-right: 0;
+        border-bottom: 1px solid color-mix(in srgb, currentColor 10%, transparent);
+        padding: 2px 0 8px;
+    }
+    .canvas-model-picker-menu.is-model-list .canvas-model-picker-brand-rail .canvas-model-picker-brand {
+        flex: 0 0 auto;
+        width: 168px;
+    }
+    .canvas-model-picker-option-heading > span:first-child {
+        flex-basis: 100%;
     }
 }
 .canvas-model-picker-option-heading {

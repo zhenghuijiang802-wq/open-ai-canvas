@@ -175,3 +175,51 @@ func TestTaskOutputResourceReadsPersistedMedia(t *testing.T) {
 		t.Fatalf("unexpected task output resource: id=%q mediaType=%q", id, mediaType)
 	}
 }
+
+func TestTaskComicAssociationSummaryMatchesDetail(t *testing.T) {
+	task := model.Task{ID: "task-1", ProjectID: "canvas-1", Type: "canvas_text", InputJSON: `{"mode":"text","metadata":{"clientOperationId":"operation-1","comicSourceNodeId":"comic-source-1","unrelated":"PRIVATE_SENTINEL"},"config":{"apiKey":"PRIVATE_SENTINEL"}}`}
+	summary := taskSummaryForOutput(task)
+	if summary.ClientContext == nil || summary.ClientContext.ClientOperationID != "operation-1" || summary.ClientContext.ComicSourceNodeID != "comic-source-1" {
+		t.Fatalf("missing request association: %+v", summary.ClientContext)
+	}
+	encoded, _ := json.Marshal(summary)
+	if strings.Contains(string(encoded), "PRIVATE_SENTINEL") || strings.Contains(string(encoded), "inputJson") {
+		t.Fatalf("task summary exposed unrelated input: %s", encoded)
+	}
+	var detail struct {
+		Metadata map[string]any `json:"metadata"`
+	}
+	if err := json.Unmarshal([]byte(taskForOutput(task).InputJSON), &detail); err != nil {
+		t.Fatal(err)
+	}
+	if detail.Metadata["clientOperationId"] != summary.ClientContext.ClientOperationID || detail.Metadata["comicSourceNodeId"] != summary.ClientContext.ComicSourceNodeID {
+		t.Fatalf("detail and summary disagree: %#v, %+v", detail.Metadata, summary.ClientContext)
+	}
+}
+
+func TestTaskComicAssociationRejectsInvalidIDsWithoutTruncating(t *testing.T) {
+	for _, value := range []any{"", " padded", "bad\nvalue", strings.Repeat("x", 161), 42, map[string]any{"private": "value"}} {
+		raw, _ := json.Marshal(map[string]any{"metadata": map[string]any{"clientOperationId": value, "comicSourceNodeId": value}})
+		task := model.Task{InputJSON: string(raw)}
+		if summary := taskSummaryForOutput(task); summary.ClientContext != nil {
+			t.Fatalf("invalid identifiers exposed in summary: %+v", summary.ClientContext)
+		}
+		var detail struct {
+			Metadata map[string]any `json:"metadata"`
+		}
+		if err := json.Unmarshal([]byte(taskForOutput(task).InputJSON), &detail); err != nil {
+			t.Fatal(err)
+		}
+		for _, key := range []string{"clientOperationId", "comicSourceNodeId"} {
+			if _, exists := detail.Metadata[key]; exists {
+				t.Fatalf("invalid identifier exposed in detail: %#v", detail.Metadata)
+			}
+		}
+	}
+	for _, limit := range []int{80, 128} {
+		boundary := strings.Repeat("a", limit)
+		if taskAssociationID(boundary, limit) != boundary || taskAssociationID(boundary+"x", limit) != "" {
+			t.Fatal("identifier boundary was not enforced without truncation")
+		}
+	}
+}

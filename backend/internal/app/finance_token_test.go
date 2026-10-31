@@ -168,3 +168,48 @@ func TestEnsureChatCompletionStreamUsageRequest(t *testing.T) {
 		t.Fatalf("stream_options = %#v", options)
 	}
 }
+
+func TestEnrichAPICallLogReadsGatewayCost(t *testing.T) {
+	tests := []struct {
+		name         string
+		payload      string
+		wantCost     int64
+		wantCurrency string
+	}{
+		{
+			name:         "top-level cost float",
+			payload:      `{"id":"call-1","cost":0.4,"cost_currency":"CNY"}`,
+			wantCost:     400_000,
+			wantCurrency: "CNY",
+		},
+		{
+			name:         "top-level cost_usd",
+			payload:      `{"id":"call-2","cost_usd":0.05}`,
+			wantCost:     50_000,
+			wantCurrency: "USD",
+		},
+		{
+			name:         "nested usage total_cost",
+			payload:      `{"id":"call-3","usage":{"total_cost":0.25}}`,
+			wantCost:     250_000,
+			wantCurrency: "CNY",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			log := &model.ApiCallLog{Capability: "image", Path: "/v1/images/generations"}
+			(&Service{}).EnrichAPICallLog(log, []byte(tt.payload))
+			if !log.CostAvailable {
+				t.Fatalf("CostAvailable = false, want true")
+			}
+			if log.EstimatedCostMicros != tt.wantCost {
+				t.Fatalf("EstimatedCostMicros = %d, want %d", log.EstimatedCostMicros, tt.wantCost)
+			}
+			if tt.wantCurrency != "" && log.Currency != tt.wantCurrency {
+				t.Fatalf("Currency = %q, want %q", log.Currency, tt.wantCurrency)
+			}
+		})
+	}
+}
+
