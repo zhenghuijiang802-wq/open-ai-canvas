@@ -1,127 +1,178 @@
 /* Comic view of a real canvas. The workspace owns colors, controls and motion. */
 .comic-workbench-page { min-width: 0; }
-.comic-workbench-shell { gap: var(--space-3); }
-.comic-workbench-header, .comic-workbench-navigation, .comic-workbench-project-actions, .comic-workbench-title, .comic-section-heading, .comic-source-footer, .comic-results-toolbar, .comic-item-heading, .comic-item-actions, .comic-model-dock { display: flex; align-items: center; gap: var(--space-3); }
-.comic-workbench-header { flex: 0 0 auto; justify-content: space-between; flex-wrap: wrap; padding: var(--space-2) var(--space-1); }
-.comic-workbench-title { min-width: 0; }
-.comic-workbench-title > svg { width: var(--space-6); height: var(--space-6); flex-shrink: 0; color: var(--user-ink-muted); }
-.comic-workbench-title h1, .comic-section-heading h2, .comic-results-toolbar h2, .comic-item h3 { margin: 0; color: var(--user-ink); font-size: var(--fs-body); font-weight: 600; }
-.comic-workbench-title p, .comic-section-heading p, .comic-results-toolbar p { margin: var(--space-1) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
-.comic-workbench-project-actions { flex-wrap: wrap; }
-.comic-project-select { width: 220px; max-width: 100%; }
-.comic-workbench-navigation { flex: 0 0 auto; justify-content: space-between; flex-wrap: wrap; padding-bottom: var(--space-3); border-bottom: 1px solid var(--user-border); }
+.comic-workbench-shell { gap: var(--space-2); }
+.comic-section-heading, .comic-source-footer { display: flex; align-items: center; gap: var(--space-3); }
+.comic-section-heading h2, .comic-studio h3 { margin: 0; color: var(--user-ink); font-size: var(--fs-body); font-weight: 600; }
+.comic-section-heading p { margin: var(--space-1) 0 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
+.comic-topbar { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; min-width: 0; min-height: 40px; }
+.comic-topbar .app-segmented { flex: 0 1 auto; min-width: 0; }
+.comic-project-select { width: 168px; min-width: 0; flex: 1 1 120px; max-width: 220px; }
+.comic-topbar-status { display: inline-flex; align-items: center; gap: 6px; flex: 0 1 160px; min-width: 0; overflow: hidden; color: var(--user-ink-muted); font-size: var(--fs-caption); white-space: nowrap; text-overflow: ellipsis; }
+.comic-topbar-status svg { width: 14px; height: 14px; flex: 0 0 auto; }
+.comic-topbar-actions { display: flex; align-items: center; gap: 2px; flex: 0 0 auto; margin-left: auto; }
+.comic-topbar-tip { display: inline-flex; }
+.comic-topbar-primary { margin-left: 6px; }
 .comic-sync-state { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--user-ink-muted); font-size: var(--fs-caption); }
 .comic-sync-state svg, .comic-item-status svg { width: var(--user-icon-size); height: var(--user-icon-size); }
-.comic-workbench-content { flex: 1 1 auto; min-height: 0; min-width: 0; overflow: auto; padding: 0 var(--space-1) var(--space-2); scrollbar-gutter: stable; }
-.comic-source-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 0.8fr); gap: var(--space-3); min-height: 100%; }
+.comic-workbench-content { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; overflow: auto; padding: 0 var(--space-1) var(--space-2); scrollbar-gutter: stable; }
+.comic-source-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: stretch; gap: var(--space-3); min-height: 100%; }
 .comic-source-editor, .comic-source-settings { gap: var(--space-4); height: auto; min-height: 0; border-radius: var(--user-radius-card); }
 .comic-source-editor { min-height: 440px; }
 .comic-section-heading { justify-content: space-between; flex-shrink: 0; }
-.comic-source-textarea.ant-input { flex: 1 1 auto; min-height: 300px; resize: vertical; line-height: 1.8; }
-.comic-source-footer { justify-content: space-between; color: var(--user-ink-muted); font-size: var(--fs-caption); flex-shrink: 0; }
+.comic-source-input { position: relative; display: flex; flex: 1 1 auto; min-height: 300px; border: 1px solid var(--status-warning); border-radius: var(--user-radius-control); }
+.comic-source-input.is-derived { border-color: var(--status-success); }
+.comic-source-input:focus-within { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
+.comic-source-textarea.ant-input { flex: 1 1 auto; min-width: 0; min-height: 300px; padding: var(--space-3); resize: vertical; line-height: 1.8; border: 0; background: transparent; box-shadow: none; }
+.comic-source-textarea.ant-input:hover, .comic-source-textarea.ant-input:focus { border: 0; box-shadow: none; }
+.comic-source-footer { justify-content: space-between; flex-wrap: wrap; color: var(--user-ink-muted); font-size: var(--fs-caption); flex-shrink: 0; }
+.comic-source-file { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-2); flex: 1 1 200px; min-width: 0; }
+.comic-source-file > .ant-btn { flex-shrink: 0; }
+.comic-source-file-name { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.comic-source-file-name > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comic-source-file-name svg { flex: 0 0 auto; width: var(--user-icon-size); height: var(--user-icon-size); }
 .comic-field { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; color: var(--user-ink-muted); font-size: var(--fs-caption); }
 .comic-field > .ant-select, .comic-field > .ant-input-number { width: 100%; }
 .comic-field-label { color: var(--user-ink-muted); font-size: var(--fs-caption); font-weight: 500; }
 .comic-settings-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
-.comic-source-next { display: flex; gap: var(--space-3); margin-top: auto; padding: var(--space-3); border-radius: var(--user-radius-control); background: var(--user-surface-muted); color: var(--user-ink-muted); }
-.comic-source-next svg { width: var(--space-5); height: var(--space-5); flex-shrink: 0; }
-.comic-source-next p { margin: 0; font-size: var(--fs-caption); line-height: 1.7; }
-.comic-results-toolbar { justify-content: space-between; margin-bottom: var(--space-4); flex-wrap: wrap; }
-.comic-items { display: grid; gap: var(--space-4); align-items: start; }
-.comic-items.is-assets { grid-template-columns: minmax(0, 1fr); }
-.comic-items.is-panels { grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); }
-.comic-item { min-width: 0; border: 1px solid var(--user-border); border-radius: var(--user-radius-card); background: var(--user-surface); padding: var(--space-4); transition: border-color var(--product-state) var(--product-ease), box-shadow var(--product-state) var(--product-ease); }
-.comic-item:hover { border-color: var(--user-border-strong); }
-.comic-item.is-selected { border-color: var(--control-selected-border); box-shadow: 0 0 0 1px var(--control-selected-border); }
-.comic-item-heading { justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-3); }
-.comic-item-heading > div { min-width: 0; }
-.comic-item h3 { overflow-wrap: anywhere; }
-.comic-item-kind { color: var(--user-ink-soft); font-size: var(--fs-caption); }
-.comic-item-identity { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
-.comic-item-identity h3 { flex: 1; }
-.comic-item-status { display: inline-flex; flex-shrink: 0; align-items: center; gap: var(--space-1); color: var(--user-ink-muted); font-size: var(--fs-caption); white-space: nowrap; }
-.comic-item-layout { display: grid; gap: var(--space-4); grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr); align-items: stretch; }
-.comic-item-media { min-width: 0; display: flex; flex-direction: column; gap: var(--space-2); }
-.comic-version-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-1); min-height: var(--space-8); color: var(--user-ink-muted); font-size: var(--fs-caption); }
-.comic-version-row .ant-btn { color: var(--user-ink-muted); }
-.comic-item.is-panel .comic-item-layout { grid-template-columns: minmax(0, 1fr); }
-.comic-item-preview { position: relative; display: flex; min-width: 0; width: 100%; padding: var(--space-2); align-items: center; justify-content: center; border: 0; border-radius: var(--user-radius-media); background: var(--user-surface-muted); color: var(--user-ink-soft); cursor: pointer; overflow: hidden; }
-.comic-item.is-asset .comic-item-preview { flex: 1 1 auto; min-height: 300px; height: 420px; max-height: 580px; }
-.comic-item.is-panel .comic-item-preview { height: 100%; }
-.comic-item-preview:disabled { cursor: default; }
-.comic-item-image { display: block; width: 100%; height: 100%; object-fit: contain; border-radius: var(--r-md); transition: transform var(--product-state) var(--product-ease); }
-.comic-item-preview:hover .comic-item-image { transform: scale(1.015); }
-.comic-item-placeholder { display: flex; align-items: center; gap: var(--space-3); flex-direction: column; padding: var(--space-4); color: var(--user-ink-muted); font-size: var(--fs-caption); text-align: center; }
-.comic-item-placeholder > svg { width: var(--space-8); height: var(--space-8); stroke-width: 1.4; }
-.comic-item-editor { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; }
-.comic-main-surface { display: flex; flex-direction: column; gap: var(--space-2); min-height: 220px; flex: 1 1 auto; }
-.comic-item.is-panel .comic-main-surface { height: clamp(260px, 36vh, 420px); flex: 0 0 auto; }
-.comic-main-surface.is-result { overflow: hidden; }
-.comic-prompt-actions { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-1); }
-.comic-prompt-actions > :last-child { margin-left: auto; }
-.comic-item-editor-label { display: flex; justify-content: space-between; gap: var(--space-2); color: var(--user-ink-muted); font-size: var(--fs-caption); }
-.comic-item-editor-label > label { font-weight: 500; }
-.comic-item-editor textarea { line-height: 1.7; }
-.comic-prompt-composer { min-width: 0; min-height: 180px; height: auto; flex: 1 1 auto; border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface-muted); }
-.comic-prompt-composer:focus-within { border-color: var(--control-focus-ring); box-shadow: 0 0 0 1px var(--control-focus-ring); }
-.comic-prompt-input { width: 100%; height: 100%; box-sizing: border-box; min-height: 160px; max-height: none; overflow-y: auto; padding: var(--space-3); font-size: var(--fs-caption); line-height: 1.7; }
-.comic-item-actions { flex-wrap: wrap; gap: var(--space-2); }
-.comic-item-actions .ant-btn { flex: 1 0 auto; }
-.comic-item.is-panel .comic-item-actions .ant-btn { flex: 0 0 auto; }
-.comic-reference-section { display: flex; flex-direction: column; gap: var(--space-2); padding-block: var(--space-2); }
-.comic-reference-section .workbench-composer-toolbar { padding: 0; gap: var(--space-2); }
-.comic-reference-section .workbench-reference-grid { padding: 0; min-width: 0; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); grid-auto-rows: auto; align-items: start; max-height: 160px; }
-.comic-reference-section .workbench-reference, .comic-reference-section .workbench-reference-placeholder { min-height: 0; height: 76px; }
-.comic-reference-section .workbench-reference-placeholder { aspect-ratio: auto; }
+
+.comic-results-toolbar { flex: 0 0 auto; justify-content: space-between; margin-bottom: var(--space-3); flex-wrap: wrap; }
+.comic-toolbar-actions { display: flex; align-items: center; gap: var(--space-2); min-width: 0; flex-wrap: wrap; }
+.comic-default-chip { max-width: min(320px, 46vw); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border: 0; border-radius: 999px; background: var(--wb-muted, var(--user-surface-muted)); color: var(--wb-text-muted, var(--user-ink-muted)); padding: 6px 12px; font: inherit; font-size: var(--fs-caption); cursor: pointer; }
+.comic-default-chip:hover:not(:disabled) { background: var(--wb-hover, var(--user-surface-hover)); color: var(--user-ink); }
+.comic-default-chip:focus-visible, .comic-studio-rail-item:focus-visible, .comic-stage-preview:focus-visible, .comic-version-gallery > button:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
+.comic-default-chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.comic-step-frame.is-studio { display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; min-width: 0; overflow: hidden; }
+.comic-studio-workspace { display: grid; grid-template-columns: 208px minmax(0, 1fr); gap: 12px; flex: 1 1 auto; min-height: 0; min-width: 0; }
+.comic-studio-rail { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; margin: 0; padding: 2px 4px 2px 0; overflow: auto; }
+.comic-studio-rail-item { display: grid; grid-template-columns: 22px 44px minmax(0, 1fr); align-items: center; gap: 8px; width: 100%; min-height: 60px; padding: 8px; border: 0; border-radius: 14px; background: transparent; color: var(--user-ink); text-align: left; cursor: pointer; }
+.comic-studio-rail-item[aria-pressed="true"] { background: var(--wb-surface, var(--user-surface)); box-shadow: 0 8px 24px color-mix(in srgb, var(--user-ink) 6%, transparent); }
+.comic-studio-rail-index { color: var(--user-ink-muted); font-size: var(--fs-caption); font-variant-numeric: tabular-nums; text-align: center; }
+.comic-studio-rail-thumb { display: grid; width: 44px; height: 44px; place-items: center; overflow: hidden; border-radius: 10px; background: var(--wb-muted, var(--user-surface-muted)); color: var(--user-ink-soft); }
+.comic-studio-rail-thumb svg { width: 16px; height: 16px; }
+.comic-studio-rail-image { display: block; width: 100%; height: 100%; object-fit: contain; }
+.comic-studio-rail-copy { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.comic-studio-rail-copy strong, .comic-studio-rail-copy small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.comic-studio-rail-copy strong { font-size: var(--fs-caption); font-weight: 600; }
+.comic-studio-rail-copy small { color: var(--user-ink-muted); font-size: var(--fs-label); }
+.comic-studio-main { min-width: 0; min-height: 0; display: flex; }
+.comic-studio { width: 100%; min-width: 0; min-height: 0; }
+.comic-studio.is-asset { display: grid; grid-template-columns: minmax(280px, 0.9fr) minmax(360px, 1.1fr); gap: 12px; height: 100%; }
+.comic-studio.is-panel { display: flex; height: 100%; }
+.comic-stage, .comic-composer { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-radius: 16px; background: var(--wb-surface, var(--user-surface)); box-shadow: 0 12px 36px color-mix(in srgb, var(--user-ink) 5%, transparent); }
+.comic-stage { padding: 16px; gap: 12px; }
+.comic-composer { flex: 1; padding: 16px 16px 12px; gap: 10px; }
+.comic-studio-heading, .comic-composer-kicker { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+.comic-studio-identity { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.comic-studio-identity h3 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; }
+.comic-kind { flex: 0 0 auto; padding: 2px 8px; border-radius: 999px; font-size: var(--fs-label); font-weight: 600; line-height: 18px; }
+.comic-kind[data-kind="character"] { color: var(--wb-accent-people, #8b78e8); background: color-mix(in srgb, var(--wb-accent-people, #8b78e8) 16%, transparent); }
+.comic-kind[data-kind="scene"] { color: var(--wb-accent-scene, #4caeb5); background: color-mix(in srgb, var(--wb-accent-scene, #4caeb5) 16%, transparent); }
+.comic-kind[data-kind="prop"] { color: var(--wb-accent-product, #e49a58); background: color-mix(in srgb, var(--wb-accent-product, #e49a58) 18%, transparent); }
+.comic-kind[data-kind="panel"] { color: var(--wb-accent-creative, #6c82dc); background: color-mix(in srgb, var(--wb-accent-creative, #6c82dc) 16%, transparent); }
+.comic-status { flex: 0 0 auto; color: var(--user-ink-muted); font-size: var(--fs-caption); }
+.comic-status[data-status="failed"], .comic-status[data-status="error"] { color: var(--palette-status-error, #b42318); }
+.comic-composer-kicker { color: var(--user-ink-muted); font-size: var(--fs-caption); }
+.comic-composer-kicker > span:first-child { color: var(--user-ink); font-weight: 600; }
+.comic-stage-well { flex: 1 1 auto; min-height: 220px; display: flex; border-radius: 16px; background: linear-gradient(160deg, color-mix(in srgb, var(--wb-muted, var(--user-surface-muted)) 88%, var(--wb-surface, var(--user-surface))), var(--wb-muted, var(--user-surface-muted))); overflow: hidden; }
+.comic-hero.is-result { flex: 0 1 auto; align-self: center; width: fit-content; max-width: 100%; min-height: 0; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: transparent; overflow: visible; }
+.comic-hero.is-result .comic-stage-preview { width: auto; height: auto; padding: 8px; border-radius: 16px; background: var(--wb-muted, var(--user-surface-muted)); }
+.comic-stage-preview { display: grid; flex: 1; place-items: center; width: 100%; height: 100%; min-height: 0; padding: 20px; border: 0; background: transparent; color: var(--user-ink-soft); cursor: zoom-in; }
+.comic-stage-preview:disabled { cursor: default; }
+.comic-stage-image { display: block; width: auto; height: auto; max-width: min(100%, 440px); max-height: min(48vh, 460px); object-fit: contain; }
+.comic-stage-empty { display: flex; max-width: 240px; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.comic-stage-empty svg { width: 28px; height: 28px; stroke-width: 1.4; }
+.comic-stage-empty strong { color: var(--user-ink); font-size: var(--fs-caption); font-weight: 600; }
+.comic-stage-empty span { color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
+.comic-version-strip { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.comic-version-row { display: flex; align-items: center; justify-content: space-between; min-height: 28px; color: var(--user-ink-muted); font-size: var(--fs-caption); }
+.comic-version-gallery { display: flex; gap: 8px; min-width: 0; overflow-x: auto; padding-bottom: 2px; }
+.comic-version-gallery > button { display: flex; flex: 0 0 72px; flex-direction: column; gap: 4px; padding: 4px; border: 0; border-radius: 12px; background: var(--wb-muted, var(--user-surface-muted)); color: var(--user-ink-muted); cursor: pointer; }
+.comic-version-gallery > button[aria-pressed="true"] { background: color-mix(in srgb, var(--wb-accent-creative, #6c82dc) 16%, var(--wb-surface, var(--user-surface))); color: var(--user-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wb-accent-creative, #6c82dc) 45%, transparent); }
+.comic-version-thumb { position: relative; display: block; height: 64px; overflow: hidden; border-radius: 8px; background: color-mix(in srgb, var(--user-ink) 4%, var(--wb-surface, var(--user-surface))); }
+.comic-version-thumb .cached-resource-image-shell, .comic-version-thumbnail { display: block; width: 100%; height: 100%; object-fit: contain; }
+.comic-version-current { position: absolute; left: 4px; bottom: 4px; padding: 0 5px; border-radius: 999px; background: var(--user-surface); color: var(--user-ink); font-size: var(--fs-label); line-height: 16px; }
+.comic-version-gallery > button > span:last-child { overflow: hidden; text-align: center; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-label); }
+.comic-composer-scroll { display: flex; flex: 1 1 auto; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; padding-right: 2px; }
+.comic-hero.is-prompt { display: flex; flex: 1 1 240px; min-height: 240px; }
+.comic-hero.is-result { min-height: 240px; }
+.comic-prompt-surface { display: flex; flex: 1; flex-direction: column; gap: 8px; min-height: 220px; padding: 14px 16px 12px; border-radius: 16px; background: linear-gradient(145deg, color-mix(in srgb, var(--wb-surface, var(--user-surface)) 96%, var(--wb-panel-glow, transparent)), color-mix(in srgb, var(--wb-muted, var(--user-surface-muted)) 84%, var(--wb-surface, var(--user-surface)))); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--user-ink) 8%, transparent); }
+.comic-prompt-surface > label { color: var(--user-ink-muted); font-size: var(--fs-caption); font-weight: 600; }
+.comic-prompt-composer { display: flex; flex: 1; min-height: 160px; }
+.comic-prompt-composer:focus-within { box-shadow: inset 0 0 0 1px var(--control-focus-ring); border-radius: 12px; }
+.comic-prompt-input { width: 100%; height: 100%; min-height: 150px; box-sizing: border-box; overflow: auto; border: 0; background: transparent; color: var(--user-ink); font-size: 16px; line-height: 1.72; overflow-wrap: anywhere; }
+.comic-result-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.comic-result-bar-end { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.comic-draft-state { color: var(--user-ink-muted); font-size: var(--fs-caption); }
+.comic-draft-state.is-dirty { color: var(--user-ink); font-weight: 600; }
+.comic-reference-section { display: flex; flex-direction: column; gap: 8px; }
+.comic-reference-section .workbench-composer-toolbar { padding: 0; }
+.comic-reference-section .workbench-reference-grid { margin: 0; max-height: 236px; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); grid-auto-rows: auto; }
+.comic-reference-section .workbench-reference, .comic-reference-section .workbench-reference-placeholder { height: 96px; }
+.comic-reference-entry { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.comic-style-reference-card { position: relative; height: 88px; border: 1px solid var(--user-border); border-radius: var(--user-radius-control); overflow: hidden; background: var(--user-surface-muted); }
+.comic-style-reference-select { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; flex-direction: column; gap: var(--space-1); padding: 0; border: 0; background: transparent; color: var(--user-ink-muted); font-size: var(--fs-caption); cursor: pointer; }
+.comic-style-reference-select img { width: 100%; height: 100%; object-fit: contain; }
+.comic-style-reference-select svg, .comic-style-reference-remove svg { width: var(--space-4); height: var(--space-4); }
+.comic-style-reference-remove { position: absolute; top: var(--space-1); right: var(--space-1); display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: var(--user-radius-control); background: var(--user-surface); color: var(--user-ink); cursor: pointer; }
+.comic-style-reference-select:focus-visible, .comic-style-reference-remove:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: -2px; }
 .comic-reference-entry.is-style-reference .workbench-reference-remove { display: none; }
-.comic-reference-entry { display: flex; min-width: 0; flex-direction: column; gap: var(--space-1); }
-.comic-reference-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-caption); color: var(--user-ink-muted); }
-.comic-style-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) 0; color: var(--user-ink-muted); font-size: var(--fs-caption); }
+.comic-reference-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--user-ink-muted); font-size: var(--fs-label); }
+.comic-style-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; padding: 0 2px; color: var(--user-ink); font-size: var(--fs-caption); }
 .comic-style-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.comic-style-row > div { min-width: 0; }
-.comic-style-row .comic-field-label { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--user-ink); }
-.comic-style-row .comic-field-label svg { width: var(--user-icon-size); height: var(--user-icon-size); }
-.comic-style-row .comic-muted { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: var(--space-1); }
-.comic-image-settings-trigger { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-width: 0; padding: var(--space-3); border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface-muted); color: var(--user-ink); cursor: pointer; text-align: left; transition: background var(--user-motion), border-color var(--user-motion); }
-.comic-image-settings-trigger:hover:not(:disabled) { background: var(--user-surface-hover); border-color: var(--user-border-strong); }
-.comic-image-settings-trigger:disabled { cursor: not-allowed; opacity: 0.5; }
-.comic-image-settings-trigger > svg { width: var(--user-icon-size); height: var(--user-icon-size); flex-shrink: 0; color: var(--user-ink-muted); }
-.comic-image-settings-trigger > span { display: flex; flex: 1 1 auto; flex-direction: column; gap: var(--space-1); min-width: 0; }
-.comic-image-settings-trigger strong { font-size: var(--fs-caption); font-weight: 500; }
-.comic-image-settings-trigger small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--user-ink-muted); font-size: var(--fs-caption); }
-.comic-default-image-settings { display: flex; flex-direction: column; gap: var(--space-2); }
-.comic-muted { margin: 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.65; }
-.comic-model-dock { flex-shrink: 0; flex-wrap: wrap; padding: var(--space-3) var(--space-4); border-radius: var(--user-radius-card); background: var(--user-surface); }
-.comic-model-summary { flex: 1 1 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--user-ink-muted); font-size: var(--fs-caption); }
-.comic-model-dock > .ant-btn { margin-left: auto; }
-.comic-import-content { display: flex; flex-direction: column; gap: var(--space-3); }
-.comic-generation-settings { display: flex; flex-direction: column; gap: var(--space-4); }
-.comic-generation-dock { margin: auto 0 0; min-width: 0; padding: var(--space-2) 0 0; border: 0; border-top: 1px solid var(--user-border); gap: var(--space-2); }
-.comic-generation-dock .workbench-model-picker { min-width: 0; flex: 1 1 auto; }
-.comic-generation-dock .workbench-parameters-trigger { width: var(--space-9); height: var(--space-9); flex-shrink: 0; padding: var(--space-2); justify-content: center; }
-.comic-generation-dock .workbench-parameters-trigger > span { display: none; }
-.comic-generation-dock .workbench-submit { height: var(--space-9); min-height: 0; padding-inline: var(--space-3); }
-.comic-version-gallery { display: flex; gap: var(--space-2); padding: var(--space-1); overflow-x: auto; }
-.comic-version-gallery > button { flex: 0 0 88px; min-width: 0; padding: var(--space-1); border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface); color: var(--user-ink-muted); cursor: pointer; }
-.comic-version-gallery > button[aria-pressed="true"] { border-color: var(--control-selected-border); background: var(--user-surface-muted); color: var(--user-ink); }
-.comic-version-thumbnail { display: block; width: 100%; height: 70px; object-fit: contain; border-radius: var(--r-sm); background: var(--user-surface-muted); }
-.comic-version-gallery > button > span { display: flex; justify-content: center; gap: var(--space-1); align-items: center; padding-top: var(--space-1); white-space: nowrap; font-size: var(--fs-tiny); }
-.comic-version-gallery svg { width: 12px; height: 12px; }
-.comic-generation-overlay { display: flex; align-items: center; justify-content: center; gap: var(--space-2); position: absolute; inset: 0; background: var(--user-surface); opacity: 0.85; color: var(--user-ink); font-size: var(--fs-caption); }
-.comic-generation-overlay svg { width: var(--space-4); animation: comic-workbench-spin 1s linear infinite; }
-.comic-creation-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.comic-muted { margin: 0; color: var(--user-ink-muted); font-size: var(--fs-caption); line-height: 1.6; }
+.comic-generation-dock { flex: 0 0 auto; margin: 0; min-width: 0; padding-top: 8px; padding-right: 0; border: 0; border-top: 1px solid color-mix(in srgb, var(--user-ink) 8%, transparent); }
+.comic-generation-dock.workbench-composer-dock { grid-template-columns: minmax(0, 1fr) 36px auto auto; }
+.comic-generation-dock .comic-batch-submit.ant-btn { height: var(--button-height-lg); }
+.comic-generation-dock .comic-batch-submit.ant-btn:not(:disabled) { border-color: var(--notice-banner-surface-warning); background: var(--notice-banner-surface-warning); color: var(--color-neutral-0); }
+.comic-generation-dock .comic-batch-submit.ant-btn:not(:disabled):hover { border-color: var(--palette-banner-warning-700); background: var(--palette-banner-warning-700); color: var(--color-neutral-0); }
+.comic-generation-dock.workbench-composer-dock > .workbench-parameters-trigger { width: auto; max-width: 168px; }
+.comic-generation-dock.workbench-composer-dock > .workbench-parameters-trigger > span { display: inline; overflow: hidden; text-overflow: ellipsis; }
+.comic-generation-overlay { display: flex; align-items: center; justify-content: center; gap: 8px; position: absolute; inset: 12px; border-radius: 16px; background: color-mix(in srgb, var(--user-surface) 88%, transparent); color: var(--user-ink); font-size: var(--fs-caption); }
+.comic-stage-preview { position: relative; }
+.comic-generation-overlay svg { width: 16px; animation: comic-workbench-spin 1s linear infinite; }
+.comic-creation-controls { display: flex; flex: 1 0 auto; flex-direction: column; justify-content: space-evenly; gap: var(--space-2); }
 .comic-creation-controls > label { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); min-width: 0; border: 1px solid var(--user-border); border-radius: var(--user-radius-control); color: var(--user-ink-muted); font-size: var(--fs-caption); }
 .comic-creation-controls > label > span { flex-shrink: 0; }
-.comic-creation-controls .ant-select { flex: 1 1 auto; min-width: 0; }
-.comic-creation-controls .ant-select-outlined .ant-select-selector { border: 0; background: transparent; box-shadow: none; }
+.comic-creation-choices { display: flex; align-items: center; gap: var(--space-2); min-width: 0; }
+.comic-creation-choices-label { flex: 0 0 auto; color: var(--user-ink); font-size: var(--fs-body); font-weight: 600; }
+.comic-creation-choices-scroll { display: flex; flex: 1 1 auto; gap: var(--space-2); min-width: 0; overflow-x: auto; overscroll-behavior-x: contain; padding: var(--space-1); scrollbar-width: thin; }
+.comic-creation-choices button { flex: 0 0 auto; min-height: 32px; padding: var(--space-1) var(--space-3); border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface); color: var(--user-ink); font: inherit; font-size: var(--fs-caption); white-space: nowrap; cursor: pointer; }
+.comic-creation-choices button[aria-pressed="true"] { border-color: var(--control-selected-border); background: var(--control-selected-bg); }
+.comic-creation-choices button:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
+.comic-creation-choices button:disabled { opacity: .5; cursor: not-allowed; }
+.comic-source-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: var(--space-2); }
+.comic-source-actions > * { min-width: 0; }
+.comic-source-actions .creation-model-picker { height: 100%; min-height: 40px; }
+.comic-creation-controls > label .ant-select { flex: 1 1 auto; min-width: 0; }
+.comic-creation-controls > label .ant-select-outlined .ant-select-selector { border: 0; background: transparent; box-shadow: none; }
+.comic-generation-settings { display: flex; flex-direction: column; gap: var(--space-4); }
 .comic-generation-settings fieldset { display: flex; flex-direction: column; gap: var(--space-5); min-width: 0; margin: 0; padding: 0; border: 0; }
 .comic-native-image-settings { display: flex; flex-direction: column; gap: var(--space-4); min-width: 0; }
+.comic-import-content { display: flex; flex-direction: column; gap: var(--space-3); }
 .comic-full-preview { display: block; width: 100%; max-height: 75vh; object-fit: contain; }
 .comic-loading { display: flex; min-height: 240px; align-items: center; justify-content: center; gap: var(--space-3); color: var(--user-ink-muted); font-size: var(--fs-caption); }
-.comic-item-preview:focus-visible, .comic-image-settings-trigger:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
-.comic-spin, .comic-item-status.is-running svg, .comic-item-placeholder > .lucide-loader-circle { animation: comic-workbench-spin 1s linear infinite; }
+.comic-spin { animation: comic-workbench-spin 1s linear infinite; }
 @keyframes comic-workbench-spin { to { transform: rotate(360deg); } }
-@media (max-width: 1000px) { .comic-source-grid { grid-template-columns: minmax(0, 1fr); } .comic-source-editor { min-height: 400px; } .comic-source-next { margin-top: 0; } }
-@media (max-width: 900px) { .comic-item.is-asset .comic-item-layout { grid-template-columns: minmax(0, 1fr); } .comic-item.is-asset .comic-item-preview { height: 340px; min-height: 260px; } }
-@media (max-width: 720px) { .comic-workbench-header { align-items: flex-start; } .comic-workbench-project-actions { width: 100%; gap: var(--space-2); } .comic-project-select { width: 100%; } .comic-workbench-navigation { align-items: flex-start; } .comic-workbench-navigation > .app-segmented { width: 100%; } .comic-item.is-panel .comic-item-layout { grid-template-columns: minmax(0, 1fr); } .comic-item.is-panel .comic-item-preview { aspect-ratio: 4 / 3; max-height: 320px; } .comic-model-dock { gap: var(--space-2); } .comic-model-dock > .comic-field-label { flex-basis: 100%; } .comic-item.is-panel .comic-item-actions .ant-btn { flex: 1 0 auto; } }
-@media (prefers-reduced-motion: reduce) { .comic-item, .comic-item-image, .comic-image-settings-trigger { transition: none; } .comic-item-preview:hover .comic-item-image { transform: none; } .comic-spin, .comic-item-status.is-running svg, .comic-item-placeholder > .lucide-loader-circle, .comic-generation-overlay svg { animation: none; } }
+@media (max-width: 1100px) { .comic-studio.is-asset { grid-template-columns: minmax(0, 1fr); } .comic-stage { min-height: 420px; } }
+@media (max-width: 1000px) { .comic-source-grid { grid-template-columns: minmax(0, 1fr); } .comic-source-editor { min-height: 400px; } .comic-creation-controls { flex: 0 0 auto; } }
+@media (max-width: 540px) { .comic-source-actions { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 860px) {
+    .comic-workbench-shell { padding-bottom: 196px; }
+    .comic-generation-dock { padding-right: 0; }
+    .comic-step-frame.is-studio { overflow: visible; flex: 0 0 auto; }
+    .comic-studio-workspace { grid-template-columns: minmax(0, 1fr); height: auto; }
+    .comic-studio-rail { flex-direction: row; overflow-x: auto; overflow-y: hidden; }
+    .comic-studio-rail-item { flex: 0 0 196px; }
+    .comic-studio, .comic-studio.is-asset, .comic-studio.is-panel, .comic-stage, .comic-composer { height: auto; }
+    .comic-composer-scroll { overflow: visible; }
+    .comic-stage { min-height: 320px; }
+    .comic-hero.is-prompt, .comic-hero.is-result { flex: 0 0 auto; min-height: 220px; }
+    .comic-topbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "steps steps" "project actions"; row-gap: 8px; }
+    .comic-topbar > .app-segmented { grid-area: steps; width: 100%; }
+    .comic-project-select { grid-area: project; width: 100%; max-width: none; }
+    .comic-topbar-status { display: none; }
+    .comic-topbar-actions { grid-area: actions; margin-left: 0; }
+    .comic-generation-dock.workbench-composer-dock { grid-template-columns: minmax(0, 1fr) auto auto; }
+    .comic-generation-dock.workbench-composer-dock > .workbench-parameters-trigger { max-width: none; }
+}
+@media (prefers-reduced-motion: reduce) { .comic-studio, .comic-stage-image, .comic-default-chip { transition: none; } .comic-spin, .comic-generation-overlay svg { animation: none; } }

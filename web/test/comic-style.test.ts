@@ -30,7 +30,18 @@ test("uploaded style is appended once as a transient input and disabled with uni
     const disabled: CanvasNodeData = { ...node, metadata: { ...node.metadata, comic: { ...node.metadata.comic, useUnifiedStyle: false } } };
     expect(appendComicStyleReference(disabled, source, ordinary)).toEqual({ references: ordinary, styleIndex: -1, styleAdded: false });
     source.metadata.comic.settings.styleSelection = { id: "builtin", title: "内置", coverUrl: "/comic-style-previews/builtin.webp" };
-    expect(comicStyleReference(node, source)).toBeUndefined();
+    expect(comicStyleReference(node, source)?.url).toBe("/comic-style-previews/builtin.webp");
+    expect(appendComicStyleReference(node, source, [{ id: "unrelated", name: "无资源引用", type: "image/png", dataUrl: "" }]).references).toHaveLength(2);
+});
+
+test("per-item style image can be replaced or cleared independently of the source style", () => {
+    const { source, node } = fixture();
+    if (!node.metadata?.comic || node.metadata.comic.role === "source") throw new Error("expected comic image");
+    const replaced: CanvasNodeData = { ...node, metadata: { ...node.metadata, comic: { ...node.metadata.comic, styleReference: { id: "replacement", title: "新画风", coverUrl: "/comic-style-previews/replacement.webp" } } } };
+    expect(comicStyleReference(replaced, source)?.url).toBe("/comic-style-previews/replacement.webp");
+    const cleared: CanvasNodeData = { ...node, metadata: { ...node.metadata, comic: { ...node.metadata.comic, styleReference: null } } };
+    expect(comicStyleReference(cleared, source)).toBeUndefined();
+    expect(comicStyleReference(node, source)?.storageKey).toBe("resource:style-image");
 });
 
 test("style references deduplicate resources while retaining original input numbering", () => {

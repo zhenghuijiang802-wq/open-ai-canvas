@@ -121,7 +121,7 @@ function comicSubmissionReferences(node: CanvasNodeData, project: CanvasProject)
 
 function comicImageInputKey(node: CanvasNodeData, project: CanvasProject) {
     const { references, bindings, styleIndex, styleAdded } = comicSubmissionReferences(node, project);
-    return JSON.stringify([comicImagePrompt(node, getComicSource(project.nodes)), references.map((reference) => [reference.id, reference.storageKey, reference.dataUrl]), bindings, styleIndex, styleAdded]);
+    return JSON.stringify([comicImagePrompt(node, getComicSource(project.nodes)), references.map((reference) => [reference.id, reference.storageKey, reference.dataUrl, reference.url]), bindings, styleIndex, styleAdded]);
 }
 
 export async function submitComicDerivation(projectId: string, config: AiConfig) {
@@ -215,7 +215,7 @@ export async function submitComicImage(projectId: string, nodeId: string, config
         if (comicNodeTaskKey(current) !== nodeKey) throw new Error("节点已被其他操作修改，请重新确认后生成");
         return { ...current, metadata: {
         ...resetGenerationTaskMetadata(current.metadata, "loading"), ...mediaVersionFieldsBeforeReplace(current), ...generationSpecMetadata(spec),
-        prompt: rawPrompt, taskClientOperationId: operationId, references: references.map((reference) => reference.storageKey || reference.dataUrl),
+        prompt: rawPrompt, taskClientOperationId: operationId, references: references.map((reference) => reference.storageKey || reference.url || reference.dataUrl),
     } }; });
     const clearUnsubmitted = () => patchNode(projectId, nodeId, (current) => current.metadata?.taskClientOperationId === operationId && !current.metadata.taskId ? { ...current, metadata: resetGenerationTaskMetadata(current.metadata, "error") } : current);
     const pendingNodeKey = comicNodeTaskKey(currentComicProject(projectId).nodes.find((item) => item.id === nodeId)!);

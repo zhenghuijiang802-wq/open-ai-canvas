@@ -4,7 +4,7 @@ import { App } from "antd";
 import { createComicSourceNode, DEFAULT_COMIC_SETTINGS, getComicAssets, getComicPanels, getComicSource, type ComicSettings } from "@/lib/canvas/comic-workflow";
 import { nodeGenerationPrompt, readNodeGenerationSpec } from "@/lib/canvas/generation-contract";
 import { comicDefaultImageConfig, comicImageConfig, comicImageDefaults, rememberComicPromptStyle, removeComicStandaloneReference, updateComicImageConfig, updateComicImageReferences } from "@/lib/canvas/comic-image-editing";
-import { appendComicStyleReference, validateComicStyleSelection } from "@/lib/canvas/comic-style";
+import { appendComicStyleReference, selectedComicStyleReference, validateComicStyleSelection } from "@/lib/canvas/comic-style";
 import { adoptMediaVersion, createNodeFromMediaVersion, ensureCurrentMediaVersion, mediaVersionAdoptBlock, removeMediaVersion } from "@/lib/canvas/canvas-media-versions";
 import { createClientUUID } from "@/lib/client-id";
 import { mergedImageCapabilityConfig } from "@/lib/model-selection";
@@ -21,19 +21,19 @@ import { queryGenerationTask, subscribeGenerationTasks } from "@/services/api/ta
 import { resolveImageUrl } from "@/services/image-storage";
 import { resourceStorageKey, uploadResourceFile } from "@/services/api/resources";
 import { assertComicImageEditable, comicReferenceIds, consumeComicTask, currentComicProject, recoverComicSubmissions, submitComicDerivation, submitComicImage } from "@/services/comic-workbench";
-import { CanvasNodeType, type CanvasNodeData } from "@/types/canvas";
+import { CanvasNodeType, type CanvasComicStyleSelection, type CanvasNodeData } from "@/types/canvas";
 import type { AiConfig } from "@/stores/use-config-store";
 import type { Asset } from "@/stores/use-asset-store";
 import type { ReferenceImage } from "@/types/image";
 import { resolveWorkbenchAssetResource } from "./workbench-assets";
 
-export type ComicWorkbenchReference = { id: string; title: string; previewUrl?: string; storageKey?: string; missing: boolean; source: "asset" | "upload" | "canvas" | "style" };
+export type ComicWorkbenchReference = { id: string; title: string; previewUrl?: string; storageKey?: string; missing: boolean; source: "asset" | "upload" | "canvas" | "style"; assetKind?: "character" | "scene" | "prop" };
 
 export type ComicWorkbenchItem = {
     id: string; title: string; prompt: string; previewUrl?: string; assetKind?: string;
     referenceAssetIds: string[]; missingReferenceIds: string[];
     status: "idle" | "running" | "succeeded" | "failed"; error?: string;
-    node: CanvasNodeData; imageConfig: AiConfig; useUnifiedStyle: boolean; references: ComicWorkbenchReference[];
+    node: CanvasNodeData; imageConfig: AiConfig; useUnifiedStyle: boolean; references: ComicWorkbenchReference[]; styleReference?: CanvasComicStyleSelection;
 };
 
 export function useComicWorkbench() {
@@ -49,6 +49,7 @@ export function useComicWorkbench() {
     const sourceComic = source?.metadata?.comic;
     const settings = sourceComic?.role === "source" ? sourceComic.settings : DEFAULT_COMIC_SETTINGS;
     const sourceText = source?.metadata?.content || "";
+    const sourceFileName = sourceComic?.role === "source" ? sourceComic.sourceFileName : undefined;
     const [projects, setProjects] = useState<CanvasLibrarySummary[]>([]);
     const [loading, setLoading] = useState(false);
     const [busy, setBusy] = useState(false);
@@ -122,14 +123,14 @@ export function useComicWorkbench() {
     const imageNodes = useMemo(() => project ? [...getComicAssets(project.nodes), ...getComicPanels(project.nodes)] : [], [project]);
     const mediaNodes = project?.nodes.filter((node) => node.type === CanvasNodeType.Image) || [];
     const standaloneReferences = imageNodes.flatMap((node) => readNodeGenerationSpec(node)?.referenceBindings.filter((binding) => !binding.nodeId && binding.resourceId && binding.mediaType === "image" && binding.role !== "source-text") || []);
-    const styleResourceId = settings.styleSelection?.referenceResourceId;
-    const previewSignature = JSON.stringify([scope, projectId, mediaNodes.map((node) => [node.id, node.metadata?.storageKey, node.metadata?.content]), standaloneReferences.map((binding) => [binding.id, binding.resourceId]), styleResourceId]);
+    const styleResourceIds = [...new Set(imageNodes.map((node) => selectedComicStyleReference(node, source)?.referenceResourceId).filter((id): id is string => Boolean(id)))];
+    const previewSignature = JSON.stringify([scope, projectId, mediaNodes.map((node) => [node.id, node.metadata?.storageKey, node.metadata?.content]), standaloneReferences.map((binding) => [binding.id, binding.resourceId]), styleResourceIds]);
     useEffect(() => {
         let active = true;
         void Promise.all([
             ...mediaNodes.map(async (node) => [node.id, await resolveImageUrl(node.metadata?.storageKey, node.metadata?.content)] as const),
             ...standaloneReferences.map(async (binding) => [binding.id, await resolveImageUrl(resourceStorageKey(binding.resourceId!))] as const),
-            ...(styleResourceId ? [(async () => [`comic-style:${styleResourceId}`, await resolveImageUrl(resourceStorageKey(styleResourceId))] as const)()] : []),
+            ...styleResourceIds.map(async (id) => [`comic-style:${id}`, await resolveImageUrl(resourceStorageKey(id))] as const),
         ])
             .then((entries) => { if (active) setPreviews(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => Boolean(entry[1])))); })
             .catch((failure) => { if (active) report(failure); });
@@ -196,7 +197,7 @@ export function useComicWorkbench() {
         useCanvasStore.getState().updateProject(projectId, { nodes });
         setSyncState("修改已缓存，等待保存");
     }, [project, projectId, loading, scope, unavailableProjectIds]);
-    const editSource = (patch: { content?: string; settings?: ComicSettings }) => {
+    const editSource = (patch: { content?: string; settings?: ComicSettings; sourceFileName?: string }) => {
         if (!project || !source || sourceComic?.role !== "source") return;
         if (sourceComic.derivationStatus === "running" || sourceComic.derivationStatus === "pending") { report(new Error("推导进行中，请等待结果后再修改原文")); return; }
         const current = currentComicProject(project.id);
@@ -206,20 +207,21 @@ export function useComicWorkbench() {
             try { validateComicStyleSelection(patch.settings.styleSelection); }
             catch (failure) { report(failure); return; }
         }
-        useCanvasStore.getState().updateProject(project.id, { nodes: current.nodes.map((node) => node.id === source.id ? { ...node, metadata: { ...node.metadata, ...(patch.content !== undefined ? { content: patch.content } : {}), comic: { ...currentComic, ...(patch.settings ? { settings: patch.settings } : {}) } } } : patch.settings ? rememberComicPromptStyle(node, currentComic.settings.style) : node) });
+        useCanvasStore.getState().updateProject(project.id, { nodes: current.nodes.map((node) => node.id === source.id ? { ...node, metadata: { ...node.metadata, ...(patch.content !== undefined ? { content: patch.content } : {}), comic: { ...currentComic, ...(patch.settings ? { settings: patch.settings } : {}), ...(patch.sourceFileName !== undefined ? { sourceFileName: patch.sourceFileName } : {}) } } } : patch.settings ? rememberComicPromptStyle(node, currentComic.settings.style) : node) });
         setSyncState("修改已缓存，等待保存");
     };
     useEffect(() => {
         if (!projectId || syncState !== "修改已缓存，等待保存") return;
         const timer = setTimeout(() => { void persist(projectId).catch(report); }, 800);
         return () => clearTimeout(timer);
-    }, [projectId, sourceText, settings, syncState, persist, report]);
+    }, [projectId, sourceText, sourceFileName, settings, syncState, persist, report]);
 
     const item = (node: CanvasNodeData): ComicWorkbenchItem => {
         const ids = project ? comicReferenceIds(node, project) : [];
         const references: ComicWorkbenchReference[] = ids.map((id) => {
             const reference = project?.nodes.find((entry) => entry.id === id);
-            return { id, title: reference?.title || "引用图片不存在", previewUrl: previews[id], storageKey: reference?.metadata?.storageKey, missing: !reference || !(reference.metadata?.storageKey || reference.metadata?.content) || reference.metadata?.status === "loading", source: reference?.metadata?.comic?.role === "asset" ? "asset" : reference?.metadata?.assetId ? "canvas" : "upload" };
+            const assetKind = reference?.metadata?.comic?.role === "asset" ? reference.metadata.comic.assetKind : undefined;
+            return { id, title: reference?.title || "引用图片不存在", previewUrl: previews[id], storageKey: reference?.metadata?.storageKey, missing: !reference || !(reference.metadata?.storageKey || reference.metadata?.content) || reference.metadata?.status === "loading", source: assetKind ? "asset" : reference?.metadata?.assetId ? "canvas" : "upload", ...(assetKind ? { assetKind } : {}) };
         });
         for (const binding of [...(readNodeGenerationSpec(node)?.referenceBindings || [])].sort((left, right) => left.order - right.order)) {
             if (binding.nodeId || binding.role === "source-text") continue;
@@ -228,12 +230,12 @@ export function useComicWorkbench() {
         const styled = appendComicStyleReference(node, source, references.map((reference) => ({ id: reference.id, name: reference.title, dataUrl: project?.nodes.find((entry) => entry.id === reference.id)?.metadata?.content || "", storageKey: reference.storageKey, type: "image/png" })));
         if (styled.styleAdded) {
             const reference = styled.references[styled.styleIndex];
-            references.push({ id: reference.id, title: reference.name, previewUrl: previews[reference.id], storageKey: reference.storageKey, missing: false, source: "style" });
+            references.push({ id: reference.id, title: reference.name, previewUrl: previews[reference.id] || reference.url, storageKey: reference.storageKey, missing: false, source: "style" });
         } else if (styled.styleIndex >= 0) {
             references[styled.styleIndex] = { ...references[styled.styleIndex], title: `${references[styled.styleIndex].title} · 同时用于画风` };
         }
         return { id: node.id, title: node.title, prompt: nodeGenerationPrompt(node), previewUrl: previews[node.id],
-            node, imageConfig: comicImageConfig(node, imageConfig), useUnifiedStyle: node.metadata?.comic?.role !== "source" && node.metadata?.comic?.useUnifiedStyle !== false, references,
+            node, imageConfig: comicImageConfig(node, imageConfig), useUnifiedStyle: node.metadata?.comic?.role !== "source" && node.metadata?.comic?.useUnifiedStyle !== false, references, styleReference: selectedComicStyleReference(node, source),
             assetKind: node.metadata?.comic?.role === "asset" ? node.metadata.comic.assetKind : undefined, referenceAssetIds: ids,
             missingReferenceIds: references.filter((entry) => entry.missing).map((entry) => entry.id),
             status: node.metadata?.status === "loading" ? node.metadata.taskId ? "running" : "failed" : node.metadata?.status === "success" ? "succeeded" : node.metadata?.status === "error" ? "failed" : "idle",
@@ -333,7 +335,7 @@ export function useComicWorkbench() {
 
     return {
         project, projects: [...new Map([...projects, ...storedProjects.filter((entry) => getComicSource(entry.nodes))].filter((entry) => !unavailableProjectIds.has(entry.id)).map((entry) => [entry.id, entry])).values()],
-        sourceText, settings, assets, panels, loading,
+        sourceText, sourceFileName, settings, assets, panels, loading,
         referenceCandidates: mediaNodes.map((node) => ({ id: node.id, title: node.title, previewUrl: previews[node.id], assetKind: node.metadata?.comic?.role === "asset" ? node.metadata.comic.assetKind : undefined, missing: !(node.metadata?.storageKey || node.metadata?.content) || node.metadata?.status === "loading" })),
         busy: busy || sourceComic?.role === "source" && sourceComic.derivationStatus === "running",
         error: error || (sourceComic?.role === "source" ? sourceComic.derivationError || "" : ""), syncState, selectedId, setSelectedId,
@@ -344,6 +346,15 @@ export function useComicWorkbench() {
             const { current, node } = editableNode(id);
             const updated = updateComicImageConfig(node, next);
             useCanvasStore.getState().updateProject(projectId, { nodes: current.nodes.map((entry) => entry.id === id ? updated : entry) });
+            await persist(projectId);
+        }),
+        setStyleReference: (id: string, selection: CanvasComicStyleSelection | null) => run(async () => {
+            if (selection) validateComicStyleSelection(selection);
+            if (selection && !selection.referenceResourceId && !selection.coverUrl?.startsWith("/comic-style-previews/")) throw new Error("该画风没有参考图片，请先上传画风图片");
+            const { current, node } = editableNode(id);
+            const comic = node.metadata?.comic;
+            if (!comic || comic.role === "source") throw new Error("请选择资产或分镜");
+            useCanvasStore.getState().updateProject(projectId, { nodes: current.nodes.map(entry => entry.id === id ? { ...node, metadata: { ...node.metadata, comic: { ...comic, styleReference: selection } } } : entry) });
             await persist(projectId);
         }),
         setNodeUnifiedStyle: (id: string, checked: boolean) => run(async () => {
@@ -407,7 +418,7 @@ export function useComicWorkbench() {
         adoptVersion: (id: string, versionId: string) => editVersion(id, versionId, "adopt"),
         deleteVersion: (id: string, versionId: string) => editVersion(id, versionId, "delete"),
         extractVersion: (id: string, versionId: string) => editVersion(id, versionId, "extract"),
-        clearError: () => setError(""), setSourceText: (content: string) => editSource({ content }), setSettings: (value: ComicSettings) => editSource({ settings: value }),
+        clearError: () => setError(""), setSourceText: (content: string) => editSource({ content }), importSourceText: (content: string, sourceFileName: string) => editSource({ content, sourceFileName }), setSettings: (value: ComicSettings) => editSource({ settings: value }),
         save: () => run(() => persist(projectId)),
         recover: () => run(async () => {
             await recoverComicSubmissions(projectId);

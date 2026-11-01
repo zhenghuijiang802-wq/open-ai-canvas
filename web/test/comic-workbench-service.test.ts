@@ -321,6 +321,18 @@ describe("comic definite rejection versus unknown transport", () => {
 });
 
 describe("comic native image editing", () => {
+    test("per-item style reference uses the selected preset image or stays empty when removed", async () => {
+        const { project, source, assets } = setup(true);
+        editNode(source.id, (item) => ({ ...item, metadata: { ...item.metadata, comic: { ...source.metadata.comic, settings: { ...source.metadata.comic.settings, styleSelection: { id: "original", title: "原画风", referenceResourceId: "original" } } } } }));
+        editNode(assets[0].id, (item) => ({ ...item, metadata: { ...item.metadata, comic: { ...assets[0].metadata.comic, styleReference: { id: "preset", title: "预设", coverUrl: "/comic-style-previews/preset.webp" } } } }));
+        editNode(assets[1].id, (item) => ({ ...item, metadata: { ...item.metadata, comic: { ...assets[1].metadata.comic, styleReference: null } } }));
+        await service.submitComicImage(project.id, assets[0].id, config);
+        expect(prepared[0].referenceImages?.[0].url).toBe("/comic-style-previews/preset.webp");
+        expect(prepared[0].prompt).toContain("@图片1 只参考");
+        await service.submitComicImage(project.id, assets[1].id, config);
+        expect(prepared[1].referenceImages).toEqual([]);
+    });
+
     test("uploaded style images are appended only while unified style is on without becoming node bindings", async () => {
         const { project, source, assets } = setup(true);
         editNode(source.id, (item) => ({ ...item, metadata: { ...item.metadata, comic: { ...source.metadata.comic, settings: { ...source.metadata.comic.settings, styleSelection: { id: "style", title: "水彩", referenceResourceId: "watercolor", coverUrl: "/api/resources/watercolor/file" } } } } }));

@@ -41,6 +41,7 @@ type ComicStylePickerProps = {
     onChange: (prompt: string, selection?: CanvasComicStyleSelection) => void;
     disabled: boolean;
     contextKey: string;
+    referenceOnly?: boolean;
 };
 
 const messageOf = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
@@ -55,7 +56,7 @@ const selectionFor = (card: Pick<StyleCard, "id" | "title" | "coverUrl" | "refer
     ...(card.referenceResourceId ? { referenceResourceId: card.referenceResourceId } : {}),
 });
 
-export function ComicStylePicker({ value, selection, onChange, disabled, contextKey }: ComicStylePickerProps) {
+export function ComicStylePicker({ value, selection, onChange, disabled, contextKey, referenceOnly = false }: ComicStylePickerProps) {
     const queryClient = useQueryClient();
     const [libraryState, setLibraryState] = useState<{ contextKey: string; items: ComicStyleLibraryItem[] }>({ contextKey, items: [] });
     const [loading, setLoading] = useState(false);
@@ -100,12 +101,12 @@ export function ComicStylePicker({ value, selection, onChange, disabled, context
         ...COMIC_STYLE_PRESETS.map(preset => ({ ...preset, kind: "builtin" as const })),
         ...library.map(item => ({ ...item, kind: "mine" as const })),
     ], [library]);
-    const selectedCard = cards.find(card => card.prompt === value && (!selection || (
+    const selectedCard = cards.find(card => (referenceOnly ? Boolean(selection) : card.prompt === value) && (!selection || (
         card.id === selection.id && card.title === selection.title
         && (card.coverUrl || "") === (selection.coverUrl || "")
         && (card.referenceResourceId || "") === (selection.referenceResourceId || "")
     )));
-    const currentCard: StyleCard | undefined = value.trim() ? selectedCard || {
+    const currentCard: StyleCard | undefined = value.trim() && (!referenceOnly || selection) ? selectedCard || {
         id: selection?.id || "comic-current-style", title: selection?.title || "当前画风", prompt: value,
         coverUrl: selection?.coverUrl, referenceResourceId: selection?.referenceResourceId, kind: "current",
     } : undefined;
@@ -175,7 +176,6 @@ export function ComicStylePicker({ value, selection, onChange, disabled, context
     };
 
     return <section className="comic-style-picker" aria-label="漫画画风">
-        <div className="comic-style-heading"><div><h3>画风</h3><p>选择画风，也可编辑或上传自定义图片。</p></div><Button size="small" icon={<Plus />} disabled={disabled} onClick={() => openEditor()}>新增画风</Button></div>
         {currentCard ? <div className="comic-style-current">
             <span className="comic-style-current-image">{currentCoverUrl ? <MediaPreview src={currentCoverUrl} kind="image" alt="" loading="lazy" /> : <Palette aria-hidden />}</span>
             <div><span className="comic-style-current-caption"><Check aria-hidden />当前画风</span><strong>{currentCard.title}</strong><p title={currentCard.prompt}>{currentCard.prompt}</p></div>
@@ -184,6 +184,7 @@ export function ComicStylePicker({ value, selection, onChange, disabled, context
         <div className="comic-style-library-tools"><SegmentedControl<"builtin" | "mine"> size="sm" value={tab} onChange={setTab} ariaLabel="画风来源" options={[{ value: "builtin", label: `预设 (${COMIC_STYLE_PRESETS.length})` }, { value: "mine", label: `我的 (${library.length})` }]} /><Input size="small" aria-label="搜索画风" placeholder="搜索画风" prefix={<Search />} allowClear value={query} onChange={event => setQuery(event.target.value)} /></div>
         {error ? <Callout tone="warning"><span>{error}</span><Button type="text" size="small" icon={<RefreshCw />} onClick={() => setReload(value => value + 1)}>重试</Button></Callout> : null}
         <div className="comic-style-grid" role="group" aria-label={tab === "builtin" ? "预设画风" : "我的画风"}>
+            {tab === "mine" ? <button type="button" className="comic-style-add" disabled={disabled} onClick={() => openEditor()}><Plus aria-hidden /><span>新增画风</span></button> : null}
             {visibleCards.map(card => {
                 const selected = selectedCard?.id === card.id && selectedCard.kind === card.kind;
                 const coverUrl = safeCoverUrl(card.coverUrl);
@@ -195,7 +196,7 @@ export function ComicStylePicker({ value, selection, onChange, disabled, context
                     <button type="button" className="comic-style-card-edit" aria-label={`编辑画风：${card.title}`} title={card.kind === "builtin" ? "编辑并另存为我的画风" : "编辑画风"} disabled={disabled} onClick={() => openEditor(card)}><Pencil aria-hidden /><span>编辑</span></button>
                 </article>;
             })}
-            {!visibleCards.length ? <div className="comic-style-empty">{tab === "mine" && loading ? <><Spin size="small" /><span>正在载入我的画风</span></> : <><Palette aria-hidden /><span>{query ? "没有匹配的画风" : "还没有自定义画风"}</span>{!query ? <Button size="small" disabled={disabled} onClick={() => openEditor()}>新增画风</Button> : null}</>}</div> : null}
+            {!visibleCards.length ? <div className="comic-style-empty">{tab === "mine" && loading ? <><Spin size="small" /><span>正在载入我的画风</span></> : <><Palette aria-hidden /><span>{query ? "没有匹配的画风" : "还没有自定义画风"}</span></>}</div> : null}
         </div>
         <AppModal title={activeEditor?.entityId ? "编辑我的画风" : activeEditor?.copiedFromBuiltin ? "编辑画风副本" : "新增画风"} open={Boolean(activeEditor)} onCancel={closeEditor} closable={!saving && !uploading} maskClosable={!saving && !uploading} width="min(680px, calc(100vw - 32px))" footer={<><Button disabled={saving || uploading} onClick={closeEditor}>取消</Button><Button icon={<Save />} disabled={locked || Boolean(validationError)} loading={saving} onClick={() => void saveEditor(false)}>保存到我的画风</Button><Button type="primary" icon={<Check />} disabled={locked || Boolean(validationError)} loading={saving} onClick={() => void saveEditor(true)}>保存并使用</Button></>}>
             {activeEditor ? <div className="comic-style-editor">
