@@ -30,7 +30,13 @@ export function selectedComicStyleReference(node: CanvasNodeData, source: Canvas
 export function comicStyleReference(node: CanvasNodeData, source: CanvasNodeData | undefined): ReferenceImage | undefined {
     const style = selectedComicStyleReference(node, source);
     if (!style || (!style.referenceResourceId && !style.coverUrl?.startsWith("/comic-style-previews/"))) return undefined;
-    return { id: `comic-style:${style.referenceResourceId || style.id}`, name: `${style.title} · 画风参考`, type: style.referenceResourceId ? "image/png" : "image/webp", ...(style.referenceResourceId ? { storageKey: `resource:${style.referenceResourceId}` } : { url: style.coverUrl }), dataUrl: "" };
+    return {
+        id: `comic-style:${style.referenceResourceId || style.id}`,
+        name: `${style.title} · 画风参考`,
+        type: style.referenceResourceId ? "image/png" : "image/webp",
+        ...(style.referenceResourceId ? { storageKey: `resource:${style.referenceResourceId}` } : { url: style.coverUrl }),
+        dataUrl: "",
+    };
 }
 
 function referenceResourceId(reference: ReferenceImage) {
