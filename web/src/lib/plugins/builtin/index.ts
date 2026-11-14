@@ -1,3 +1,4 @@
+import "./pose-gallery/plugin";
 import "./eagle";
 import "./prompt-optimizer";
 import "./workflows";

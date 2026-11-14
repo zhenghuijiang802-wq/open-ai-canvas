@@ -1,0 +1,19 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "ai-pose-gallery-zh",
+  "name": "AI姿势参考图库 (Shisei CC0)",
+  "version": "2.0.0",
+  "author": "wquguru/shisei (CC0 1.0)",
+  "description": "基于 Shisei (姿勢) 开源姿势图库的 280+ 套多视角人偶线稿，涵盖全身标准、上半身、性感系与双人互动等五机位，遵循 CC0 1.0 公有领域协议，完全免费商用。",
+  "entry": "web/entry.js",
+  "surfaces": ["fullscreen", "asset-source"],
+  "runtime": {"web":"sandbox"},
+  "permissions": ["asset.read","asset.search","asset.import"],
+  "configuration": {"fields":[
+    {"name":"baseUrl","type":"url","label":"图库根目录","default":"https://shisei.indaloop.app/","description":"需提供 catalog.json 与 images/ 目录；支持使用官方 CDN 或自建镜像。"},
+    {"name":"systems","type":"string","label":"读取的体系名称","default":"全身・标准,上半身,全身・性感,双人","description":"默认包含全部四个系列；自定义时用英文逗号分隔。"},
+    {"name":"licenseText","type":"string","label":"素材授权说明","default":"CC0 1.0 公有领域协议（免署名，完全支持商业使用）。"},
+    {"name":"autoUploadGenerated","type":"boolean","label":"自动写回（本图库只读，保持关闭）","default":false}
+  ]},
+  "contributes":{"assetSources":["ai-pose-gallery-zh"]}
+}

@@ -1,0 +1,227 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "fast-video",
+  "name": "Fast Video",
+  "version": "1.0.0",
+  "author": "Fast Video",
+  "description": "异步视频生成 API 协议插件（支持 fast、mini 等模型）。",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "API Key",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "fast-video",
+        "label": "Fast Video",
+        "capabilities": [
+          "video"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://43.161.242.42/v1",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "视频模型 ID（fast 或 mini）。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt/content/input",
+            "description": "视频提示词（1-5000字）。"
+          },
+          {
+            "name": "duration",
+            "type": "integer",
+            "required": false,
+            "mapping": "duration/seconds",
+            "description": "生成时长（4-15秒）。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "ratio/aspect_ratio/size",
+            "description": "画面比例（默认 16:9）。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution",
+            "description": "分辨率（480p 或 720p）。"
+          },
+          {
+            "name": "generateAudio",
+            "type": "boolean",
+            "required": false,
+            "mapping": "generate_audio",
+            "description": "是否生成音频（默认 false）。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/videos",
+          "contentType": "application/json",
+          "headers": {
+            "Idempotency-Key": {
+              "$omitEmpty": {
+                "$ref": "request.extra.idempotencyKey"
+              }
+            }
+          },
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "seconds": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.duration"
+                },
+                "else": 5
+              }
+            },
+            "ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "resolution": {
+              "$coalesce": [
+                {
+                  "$ref": "request.resolution"
+                },
+                "720p"
+              ]
+            },
+            "withAudio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.generateAudio"
+                },
+                false
+              ]
+            }
+          }
+        },
+        "poll": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}",
+          "contentType": "application/json"
+        },
+        "result": {
+          "method": "GET",
+          "path": "/v1/videos/{{taskId}}/content",
+          "headers": {
+            "Accept": "video/mp4"
+          }
+        },
+        "response": {
+          "taskId": {
+            "$coalesce": [
+              {
+                "$ref": "response.id"
+              },
+              {
+                "$ref": "response.task_id"
+              },
+              {
+                "$ref": "response.taskId"
+              },
+              {
+                "$ref": "response.data.id"
+              },
+              {
+                "$ref": "taskId"
+              }
+            ]
+          },
+          "status": {
+            "$coalesce": [
+              {
+                "$ref": "response.status"
+              },
+              {
+                "$ref": "response.data.status"
+              },
+              "pending"
+            ]
+          },
+          "message": {
+            "$coalesce": [
+              {
+                "$ref": "response.error.message"
+              },
+              {
+                "$ref": "response.errorReason"
+              },
+              {
+                "$ref": "response.message"
+              }
+            ]
+          },
+          "videos": {
+            "$coalesce": [
+              {
+                "$ref": "response.url"
+              },
+              {
+                "$ref": "response.video_url"
+              }
+            ]
+          },
+          "errorPaths": [
+            "error.code",
+            "errorCode"
+          ],
+          "resultEphemeral": true,
+          "messagePaths": [
+            "error.message",
+            "errorReason"
+          ]
+        }
+      }
+    ]
+  },
+  "documentation": "# Fast Video\n\n该目录是 Fast Video / 异步视频生成 API 独立请求协议插件源码。后端从生成的 `fast-video.yingce-plugin` 包加载，不依赖系统内置 `host:` 适配器。\n\n完整接口见 [docs/interface.md](docs/interface.md)。\n\n---\n\n# Fast Video 接口字段\n\n## 协议身份\n\n- 插件 ID：`fast-video`。\n- Provider ID：`fast-video`。\n- 能力：`video`。\n- 默认 Base URL：`https://43.161.242.42/v1`。\n- 鉴权驱动：`bearer`。\n- 创建：`POST /v1/videos`。\n- 查询：`GET /v1/videos/{{taskId}}`。\n- 结果：`GET /v1/videos/{{taskId}}/content`。\n\n## 配置字段\n\n| 字段 | 类型 | 必填 | 含义 |\n| --- | --- | --- | --- |\n| `apiKey` | secret | 是 | API Key |\n\n## 统一字段映射\n\n| 统一字段 | 类型 | 必填 | 上游映射 | 说明 |\n| --- | --- | --- | --- | --- |\n| `model` | string | 是 | `model` | 视频模型 ID（fast 或 mini）。 |\n| `prompt` | string | 是 | `prompt` | 视频生成提示词（1-5000 字）。 |\n| `duration` | integer | 否 | `seconds` | 视频时长（4-15 秒）。 |\n| `aspectRatio` | string | 否 | `ratio` | 视频比例（如 16:9）。 |\n| `resolution` | string | 否 | `resolution` | 视频分辨率（如 720p、480p）。 |\n| `generateAudio` | boolean | 否 | `withAudio` | 是否生成音频（布尔值）。 |\n\n<!-- YINGCE_MANIFEST_CONTRACT_START -->\n## Manifest 完整接口定义\n\n以下 JSON 与插件包内实际 `manifest.json` 逐字段一致，覆盖插件身份、权限、配置、鉴权、参数、校验、创建、Agent、查询、取消、结果下载、响应和 Agent 响应映射。`documentation` 字段的值就是当前完整文档；为避免文档在自身内部无限递归，JSON 中仅用等义占位文本表示正文。\n\n```json\n{\n  \"apiVersion\": \"yingce.plugin/v2\",\n  \"id\": \"fast-video\",\n  \"name\": \"Fast Video\",\n  \"version\": \"1.0.0\",\n  \"author\": \"Fast Video\",\n  \"description\": \"异步视频生成 API 协议插件（支持 fast、mini 等模型）。\",\n  \"permissions\": [\n    \"generation.run\",\n    \"media.read\"\n  ],\n  \"configuration\": {\n    \"fields\": [\n      {\n        \"name\": \"apiKey\",\n        \"type\": \"secret\",\n        \"label\": \"API Key\",\n        \"required\": true\n      }\n    ]\n  },\n  \"contributes\": {\n    \"providers\": [\n      {\n        \"id\": \"fast-video\",\n        \"label\": \"Fast Video\",\n        \"capabilities\": [\n          \"video\"\n        ],\n        \"scopes\": [\n          \"admin.system-channel\",\n          \"user.custom-channel\",\n          \"canvas\",\n          \"creation\",\n          \"agent\"\n        ],\n        \"baseUrl\": \"https://43.161.242.42/v1\",\n        \"requiresPublicMediaUrls\": false,\n        \"auth\": {\n          \"type\": \"bearer\",\n          \"field\": \"apiKey\"\n        },\n        \"parameters\": [\n          {\n            \"name\": \"model\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"model\",\n            \"description\": \"视频模型 ID（fast 或 mini）。\"\n          },\n          {\n            \"name\": \"prompt\",\n            \"type\": \"string\",\n            \"required\": true,\n            \"mapping\": \"prompt/content/input\",\n            \"description\": \"视频提示词（1-5000字）。\"\n          },\n          {\n            \"name\": \"duration\",\n            \"type\": \"integer\",\n            \"required\": false,\n            \"mapping\": \"duration/seconds\",\n            \"description\": \"生成时长（4-15秒）。\"\n          },\n          {\n            \"name\": \"aspectRatio\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"ratio/aspect_ratio/size\",\n            \"description\": \"画面比例（默认 16:9）。\"\n          },\n          {\n            \"name\": \"resolution\",\n            \"type\": \"string\",\n            \"required\": false,\n            \"mapping\": \"resolution\",\n            \"description\": \"分辨率（480p 或 720p）。\"\n          },\n          {\n            \"name\": \"generateAudio\",\n            \"type\": \"boolean\",\n            \"required\": false,\n            \"mapping\": \"generate_audio\",\n            \"description\": \"是否生成音频（默认 false）。\"\n          }\n        ],\n        \"create\": {\n          \"method\": \"POST\",\n          \"path\": \"/v1/videos\",\n          \"contentType\": \"application/json\",\n          \"headers\": {\n            \"Idempotency-Key\": {\n              \"$omitEmpty\": {\n                \"$ref\": \"request.extra.idempotencyKey\"\n              }\n            }\n          },\n          \"body\": {\n            \"model\": {\n              \"$ref\": \"request.model\"\n            },\n            \"prompt\": {\n              \"$ref\": \"request.prompt\"\n            },\n            \"seconds\": {\n              \"$if\": {\n                \"condition\": {\n                  \"$gt\": [\n                    {\n                      \"$ref\": \"request.duration\"\n                    },\n                    0\n                  ]\n                },\n                \"then\": {\n                  \"$ref\": \"request.duration\"\n                },\n                \"else\": 5\n              }\n            },\n            \"ratio\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.aspectRatio\"\n                },\n                \"16:9\"\n              ]\n            },\n            \"resolution\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.resolution\"\n                },\n                \"720p\"\n              ]\n            },\n            \"withAudio\": {\n              \"$coalesce\": [\n                {\n                  \"$ref\": \"request.generateAudio\"\n                },\n                false\n              ]\n            }\n          }\n        },\n        \"poll\": {\n          \"method\": \"GET\",\n          \"path\": \"/v1/videos/{{taskId}}\",\n          \"contentType\": \"application/json\"\n        },\n        \"result\": {\n          \"method\": \"GET\",\n          \"path\": \"/v1/videos/{{taskId}}/content\",\n          \"headers\": {\n            \"Accept\": \"video/mp4\"\n          }\n        },\n        \"response\": {\n          \"taskId\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.id\"\n              },\n              {\n                \"$ref\": \"response.task_id\"\n              },\n              {\n                \"$ref\": \"response.taskId\"\n              },\n              {\n                \"$ref\": \"response.data.id\"\n              },\n              {\n                \"$ref\": \"taskId\"\n              }\n            ]\n          },\n          \"status\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.status\"\n              },\n              {\n                \"$ref\": \"response.data.status\"\n              },\n              \"pending\"\n            ]\n          },\n          \"message\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.error.message\"\n              },\n              {\n                \"$ref\": \"response.errorReason\"\n              },\n              {\n                \"$ref\": \"response.message\"\n              }\n            ]\n          },\n          \"videos\": {\n            \"$coalesce\": [\n              {\n                \"$ref\": \"response.url\"\n              },\n              {\n                \"$ref\": \"response.video_url\"\n              }\n            ]\n          },\n          \"errorPaths\": [\n            \"error.code\",\n            \"errorCode\"\n          ],\n          \"resultEphemeral\": true,\n          \"messagePaths\": [\n            \"error.message\",\n            \"errorReason\"\n          ]\n        }\n      }\n    ]\n  },\n  \"documentation\": \"<当前插件的完整 documentation，由 README.md 与 docs/interface.md 拼接而成；为避免 JSON 递归，此处不重复展开正文。>\"\n}\n```\n<!-- YINGCE_MANIFEST_CONTRACT_END -->\n"
+}

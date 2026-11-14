@@ -172,7 +172,7 @@ func canonicalAgentChatBody(source *canonicalAgentRequest, claude bool) map[stri
 	}
 	tools := make([]interface{}, 0, len(source.Tools))
 	for _, tool := range source.Tools {
-		tools = append(tools, tool)
+		tools = append(tools, sanitizeWireTool(tool))
 	}
 	choice := source.ToolChoice
 	if named, ok := choice.(map[string]interface{}); ok {
@@ -247,6 +247,9 @@ func canonicalAgentResponsesBody(source *canonicalAgentRequest) (map[string]inte
 		function, _ := tool["function"].(map[string]interface{})
 		converted := cloneStringAnyMap(function)
 		converted["type"] = "function"
+		if params, ok := converted["parameters"].(map[string]interface{}); ok {
+			converted["parameters"] = sanitizeWireToolParameters(params)
+		}
 		tools = append(tools, converted)
 	}
 	body := map[string]interface{}{"input": messages, "tools": tools, "tool_choice": source.ToolChoice, "parallel_tool_calls": false}
@@ -440,6 +443,9 @@ func canonicalAgentGeminiBody(source *canonicalAgentRequest) map[string]interfac
 			function, _ := tool["function"].(map[string]interface{})
 			declaration := cloneStringAnyMap(function)
 			delete(declaration, "strict")
+			if params, ok := declaration["parameters"].(map[string]interface{}); ok {
+				declaration["parameters"] = sanitizeWireToolParameters(params)
+			}
 			declarations = append(declarations, declaration)
 		}
 		choice := map[string]interface{}{"mode": "AUTO"}
@@ -634,4 +640,31 @@ func dedupeCanonicalAgentTools(tools []map[string]interface{}) []map[string]inte
 		result = append(result, tool)
 	}
 	return result
+}
+
+func sanitizeWireToolParameters(params map[string]interface{}) map[string]interface{} {
+	if params == nil {
+		return nil
+	}
+	cleaned := cloneStringAnyMap(params)
+	delete(cleaned, "oneOf")
+	delete(cleaned, "anyOf")
+	delete(cleaned, "allOf")
+	delete(cleaned, "not")
+	return cleaned
+}
+
+func sanitizeWireTool(tool map[string]interface{}) map[string]interface{} {
+	if tool == nil {
+		return nil
+	}
+	cloned := cloneStringAnyMap(tool)
+	if fn, ok := cloned["function"].(map[string]interface{}); ok {
+		fnCloned := cloneStringAnyMap(fn)
+		if params, ok := fnCloned["parameters"].(map[string]interface{}); ok {
+			fnCloned["parameters"] = sanitizeWireToolParameters(params)
+		}
+		cloned["function"] = fnCloned
+	}
+	return cloned
 }

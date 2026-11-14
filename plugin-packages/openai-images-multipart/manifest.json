@@ -1,0 +1,448 @@
+{
+  "apiVersion": "yingce.plugin/v2",
+  "id": "openai-images-multipart",
+  "name": "OpenAI Images（文件上传）",
+  "version": "1.0.0",
+  "author": "影策自部署适配",
+  "description": "文生图使用 JSON；图生图以 multipart 文件上传参考图。适用于爱拍等要求文件上传的渠道。",
+  "permissions": [
+    "generation.run",
+    "media.read"
+  ],
+  "configuration": {
+    "fields": [
+      {
+        "name": "apiKey",
+        "type": "secret",
+        "label": "API Key",
+        "required": true
+      }
+    ]
+  },
+  "contributes": {
+    "providers": [
+      {
+        "id": "openai-image-multipart",
+        "label": "OpenAI Images（文件上传）",
+        "capabilities": [
+          "image"
+        ],
+        "scopes": [
+          "admin.system-channel",
+          "user.custom-channel",
+          "canvas",
+          "creation",
+          "agent"
+        ],
+        "baseUrl": "https://api.openai.com",
+        "requiresPublicMediaUrls": false,
+        "auth": {
+          "type": "bearer",
+          "field": "apiKey"
+        },
+        "imageParameters": [
+          {
+            "name": "size",
+            "label": "画幅 / 尺寸",
+            "type": "string",
+            "binding": "aspectRatio",
+            "encoding": "pixels",
+            "pricing": true
+          },
+          {
+            "name": "imageResolution",
+            "label": "分辨率",
+            "type": "string",
+            "binding": "resolution",
+            "enabled": false,
+            "pricing": true
+          },
+          {
+            "name": "quality",
+            "label": "图片质量",
+            "type": "string",
+            "binding": "quality",
+            "pricing": true
+          },
+          {
+            "name": "count",
+            "label": "生成数量",
+            "type": "integer",
+            "binding": "imageCount",
+            "min": 1,
+            "max": 100,
+            "step": 1,
+            "default": 1
+          },
+          {
+            "name": "transparentBackground",
+            "label": "透明背景",
+            "type": "boolean",
+            "binding": "transparentBackground",
+            "default": false,
+            "enabled": false
+          },
+          {
+            "name": "outputFormat",
+            "label": "输出格式",
+            "type": "string",
+            "binding": "providerOptions.openai-image-multipart.output_format",
+            "values": [
+              "png",
+              "jpeg",
+              "webp"
+            ],
+            "default": "png",
+            "enabled": false
+          },
+          {
+            "name": "outputCompression",
+            "label": "压缩质量",
+            "type": "integer",
+            "binding": "providerOptions.openai-image-multipart.output_compression",
+            "min": 0,
+            "max": 100,
+            "step": 1,
+            "enabled": false
+          },
+          {
+            "name": "responseFormat",
+            "label": "返回格式",
+            "type": "string",
+            "binding": "providerOptions.openai-image-multipart.response_format",
+            "values": [
+              "url",
+              "b64_json"
+            ],
+            "default": "url"
+          }
+        ],
+        "parameters": [
+          {
+            "name": "model",
+            "type": "string",
+            "required": true,
+            "mapping": "model",
+            "description": "图片模型 ID。"
+          },
+          {
+            "name": "prompt",
+            "type": "string",
+            "required": true,
+            "mapping": "prompt",
+            "description": "图片提示词。"
+          },
+          {
+            "name": "images",
+            "type": "media[]",
+            "required": false,
+            "mapping": "provider image/reference fields",
+            "description": "参考图或编辑源图，role 由业务层确定。"
+          },
+          {
+            "name": "imageCount",
+            "type": "integer",
+            "required": false,
+            "mapping": "n/sample_count",
+            "description": "输出数量。"
+          },
+          {
+            "name": "aspectRatio",
+            "type": "string",
+            "required": false,
+            "mapping": "size/aspect_ratio",
+            "description": "比例或尺寸，语义按协议说明。"
+          },
+          {
+            "name": "resolution",
+            "type": "string",
+            "required": false,
+            "mapping": "resolution/imageSize",
+            "description": "分辨率档位。"
+          },
+          {
+            "name": "quality",
+            "type": "string",
+            "required": false,
+            "mapping": "quality",
+            "description": "质量档位。"
+          },
+          {
+            "name": "providerOptions",
+            "type": "object",
+            "required": false,
+            "mapping": "provider-specific fields",
+            "description": "插件命名空间内的厂商扩展字段。"
+          }
+        ],
+        "create": {
+          "method": "POST",
+          "path": "/v1/images/generations",
+          "pathTemplate": {
+            "$if": {
+              "condition": {
+                "$gt": [
+                  {
+                    "$len": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  0
+                ]
+              },
+              "then": "/v1/images/edits",
+              "else": "/v1/images/generations"
+            }
+          },
+          "contentType": "application/json",
+          "body": {
+            "model": {
+              "$ref": "request.model"
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "n": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$gt": [
+                      {
+                        "$ref": "request.imageCount"
+                      },
+                      0
+                    ]
+                  },
+                  "then": {
+                    "$ref": "request.imageCount"
+                  },
+                  "else": 1
+                }
+              }
+            },
+            "size": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$in": [
+                      {
+                        "$lower": {
+                          "$trim": {
+                            "$ref": "request.aspectRatio"
+                          }
+                        }
+                      },
+                      [
+                        "",
+                        "auto"
+                      ]
+                    ]
+                  },
+                  "then": null,
+                  "else": {
+                    "$ref": "request.aspectRatio"
+                  }
+                }
+              }
+            },
+            "resolution": {
+              "$omitEmpty": {
+                "$ref": "request.resolution"
+              }
+            },
+            "quality": {
+              "$omitEmpty": {
+                "$if": {
+                  "condition": {
+                    "$in": [
+                      {
+                        "$lower": {
+                          "$trim": {
+                            "$ref": "request.quality"
+                          }
+                        }
+                      },
+                      [
+                        "",
+                        "auto"
+                      ]
+                    ]
+                  },
+                  "then": null,
+                  "else": {
+                    "$ref": "request.quality"
+                  }
+                }
+              }
+            },
+            "background": {
+              "$omitEmpty": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.providerOptions.openai-image-multipart.background"
+                  },
+                  {
+                    "$if": {
+                      "condition": {
+                        "$eq": [
+                          {
+                            "$ref": "request.extra.transparentBackground"
+                          },
+                          "true"
+                        ]
+                      },
+                      "then": "transparent",
+                      "else": null
+                    }
+                  }
+                ]
+              }
+            },
+            "output_format": {
+              "$omitEmpty": {
+                "$coalesce": [
+                  {
+                    "$ref": "request.providerOptions.openai-image-multipart.output_format"
+                  },
+                  "png"
+                ]
+              }
+            },
+            "output_compression": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.openai-image-multipart.output_compression"
+              }
+            },
+            "moderation": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.openai-image-multipart.moderation"
+              }
+            },
+            "response_format": {
+              "$coalesce": [
+                {
+                  "$ref": "request.providerOptions.openai-image-multipart.response_format"
+                },
+                "url"
+              ]
+            },
+            "style": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.openai-image-multipart.style"
+              }
+            },
+            "user": {
+              "$omitEmpty": {
+                "$ref": "request.providerOptions.openai-image-multipart.user"
+              }
+            }
+          },
+          "contentTypeTemplate": {
+            "$if": {
+              "condition": {
+                "$gt": [
+                  {
+                    "$len": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  0
+                ]
+              },
+              "then": "multipart/form-data",
+              "else": "application/json"
+            }
+          },
+          "files": [
+            {
+              "name": "image[]",
+              "source": {
+                "$filter": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "where": {
+                    "$ne": [
+                      {
+                        "$ref": "media.role"
+                      },
+                      "mask"
+                    ]
+                  }
+                }
+              }
+            },
+            {
+              "name": "mask",
+              "source": {
+                "$filter": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "where": {
+                    "$eq": [
+                      {
+                        "$ref": "media.role"
+                      },
+                      "mask"
+                    ]
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "response": {
+          "status": "succeeded",
+          "images": {
+            "$map": {
+              "from": {
+                "$ref": "response.data"
+              },
+              "as": "item",
+              "in": {
+                "url": {
+                  "$omitEmpty": {
+                    "$ref": "item.url"
+                  }
+                },
+                "dataUrl": {
+                  "$if": {
+                    "condition": {
+                      "$ref": "item.b64_json"
+                    },
+                    "then": {
+                      "$concat": [
+                        "data:image/png;base64,",
+                        {
+                          "$ref": "item.b64_json"
+                        }
+                      ]
+                    },
+                    "else": null
+                  }
+                }
+              }
+            }
+          },
+          "usage": {
+            "$ref": "response.usage"
+          },
+          "errorPaths": [
+            "error.code"
+          ],
+          "messagePaths": [
+            "error.message"
+          ]
+        }
+      }
+    ]
+  },
+  "documentation": "# OpenAI Images（文件上传）\n\n独立协议 ID：`openai-image-multipart`。用于图生图要求 multipart 文件上传的渠道。与已有 `openai-image` JSON 协议并存，按渠道文档选择。\n\n## 请求合同\n\n- 无参考图：POST `/v1/images/generations`，application/json。\n- 有参考图：POST `/v1/images/edits`，multipart/form-data；宿主生成 boundary，不手写 Content-Type。\n- 非 mask 参考图按 order 排序，逐张写入 `image[]` 文件字段，保留文件名、MIME 和图片字节；可处理已解析的本地资源、data URL 或受出站安全规则约束的 URL。\n- mask 角色独立写入 `mask` 文件字段。渠道不支持 mask 时必须在模型能力配置中禁用；爱拍模型已禁用。\n- model、prompt、n、size、quality 等为普通字段。参考图不写入 JSON images/image_url。\n- 返回 data[].url 或 data[].b64_json，交给宿主持久化。默认 responseFormat=url。\n- providerOptions 使用 openai-image-multipart 命名空间。\n\n## 接入和验证\n\n在插件中心导入相邻的 `.yingce-plugin` 包，在渠道模型中选择“OpenAI Images（文件上传）”。尺寸、数量和参考图限制按供应商文档收窄。爱拍同步接口 n=1、最多 10 张参考图、不支持 mask；这不是所有兼容渠道的通用限制。\n\n本插件不包含密钥，不改变原有 JSON 插件，不提供失败后自动换协议重试。更新已安装插件或切换模型前保留原配置以便回滚。\n"
+}

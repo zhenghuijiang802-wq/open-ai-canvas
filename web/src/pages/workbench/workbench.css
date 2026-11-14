@@ -44,6 +44,7 @@
 }
 .workbench-tool-bar {
     display: flex;
+    flex: 0 0 auto;
     align-items: center;
     gap: 12px;
     min-width: 0;
@@ -87,10 +88,11 @@
 }
 .workbench-composer {
     display: flex;
-    flex: 1;
+    flex: 1 1 auto;
     flex-direction: column;
     min-height: 0;
     height: 100%;
+    max-height: 100%;
     padding: 16px 16px 12px;
     border: 0;
     border-radius: 16px;
@@ -133,6 +135,7 @@
     font: inherit;
     text-align: left;
     cursor: pointer;
+    margin-left: auto;
 }
 .workbench-tool-choice > svg {
     width: 16px;
@@ -333,6 +336,21 @@
 .workbench-toolbar-actions {
     justify-content: flex-end;
 }
+.workbench-toolbar-actions button.workbench-pose-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    width: auto;
+    padding-inline: 8px;
+    white-space: nowrap;
+    background: var(--wb-muted);
+    font-size: 12px;
+}
+.workbench-tool-choice:focus-visible,
+.workbench-toolbar-actions button:focus-visible {
+    outline: 2px solid var(--user-focus-ring, var(--wb-text));
+    outline-offset: 2px;
+}
 .workbench-toolbar-actions button,
 .workbench-composer-footer button,
 .workbench-section-heading > button {
@@ -358,15 +376,19 @@
     height: 18px;
 }
 .workbench-reference-grid {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 104px;
     flex: 0 0 auto;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    max-height: 224px;
+    overflow: auto;
+    overscroll-behavior: contain;
     gap: 8px;
     margin: 8px 0 8px;
 }
 .workbench-reference-slots {
     display: grid;
+    flex: 0 0 auto;
     gap: 8px;
     margin-bottom: 16px;
 }
@@ -528,8 +550,8 @@
     position: relative;
     display: grid;
     place-items: center;
-    width: 88px;
-    height: 100px;
+    width: 100%;
+    height: 104px;
     flex: 0 0 auto;
     overflow: hidden;
     border: 1px solid var(--wb-edge);
@@ -547,11 +569,11 @@
     width: 21px;
     height: 21px;
 }
-.workbench-reference > img,
-.workbench-reference > video {
+.workbench-reference-preview-trigger > img,
+.workbench-reference-preview-trigger > video {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
 }
 .workbench-reference > .ant-progress {
     position: absolute;
@@ -561,7 +583,7 @@
     border-radius: 50%;
     background: color-mix(in srgb, var(--wb-surface) 88%, transparent);
 }
-.workbench-reference > button {
+.workbench-reference-remove {
     position: absolute;
     top: 4px;
     right: 4px;
@@ -574,7 +596,7 @@
     background: color-mix(in srgb, #111 66%, transparent);
     color: white;
 }
-.workbench-reference > button svg {
+.workbench-reference-remove svg {
     width: 13px;
     height: 13px;
 }
@@ -605,13 +627,14 @@
     color: #41766a;
 }
 .workbench-prompt-surface {
-    flex: 0 0 auto;
+    flex: 1 0 220px;
     display: flex;
     flex-direction: column;
     min-width: 0;
-    height: 200px;
-    margin: 0 0 16px;
-    padding: 16px 16px 8px;
+    height: auto;
+    min-height: 220px;
+    margin: 0 0 8px;
+    padding: 12px 14px 6px;
     border-radius: 12px;
     background: var(--wb-raised);
     box-shadow: 0 1px 3px color-mix(in srgb, var(--wb-text) 5%, transparent);
@@ -698,13 +721,15 @@
     width: 148px;
 }
 .workbench-composer-dock {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 36px auto;
+    flex: 0 0 auto;
     align-items: center;
     flex-wrap: nowrap;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
     margin-top: 4px;
-    padding-top: 16px;
+    padding-top: 8px;
     border-top: 1px solid color-mix(in srgb, var(--wb-edge) 56%, transparent);
 }
 
@@ -2179,7 +2204,8 @@
 
 .workbench-block-label {
     flex: 0 0 auto;
-    margin-bottom: 8px;
+    margin-top: 10px;
+    margin-bottom: 6px;
 }
 
 .workbench-block-label .workbench-section-index {
@@ -2328,9 +2354,6 @@
 }
 
 .workbench-prompt-surface {
-    height: 228px;
-    margin-bottom: 16px;
-    padding: 16px 20px 8px;
     border: 0;
     border-radius: 16px;
     background: linear-gradient(145deg, color-mix(in srgb, var(--wb-surface) 98%, var(--wb-panel-glow)), color-mix(in srgb, var(--wb-muted) 86%, var(--wb-surface)));
@@ -2376,8 +2399,10 @@
 
 @media (max-width: 767px) {
     .workbench-prompt-surface {
-        height: 210px;
-        padding-inline: 16px;
+        flex-basis: 180px;
+        height: auto;
+        min-height: 180px;
+        padding-inline: 12px;
     }
 }
 
@@ -2401,6 +2426,7 @@
     }
 
     .workbench-flow-step {
+        flex: 0 0 auto;
         font-size: 11px;
     }
 
@@ -2416,4 +2442,172 @@
     .workbench-goal-card {
         min-height: 58px;
     }
+}
+
+.workbench-parameters-trigger {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 6px;
+    max-width: 100%;
+    min-height: 32px;
+    margin: 8px 0 0;
+    padding: 5px 10px;
+    border: 0;
+    border-radius: var(--button-radius, 8px);
+    background: var(--wb-muted);
+    color: var(--wb-text);
+    font: inherit;
+    font-size: 12px;
+    cursor: pointer;
+}
+.workbench-parameters-trigger:hover,
+.workbench-parameters-trigger[aria-expanded="true"] {
+    background: var(--wb-hover);
+}
+.workbench-parameters-trigger:focus-visible {
+    outline: 2px solid var(--user-focus-ring, var(--wb-text));
+    outline-offset: 2px;
+}
+.workbench-parameters-trigger svg {
+    width: 15px;
+    height: 15px;
+    flex: 0 0 auto;
+}
+.workbench-parameters-trigger span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.workbench-slot-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.workbench-slot-actions button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 0;
+    border-radius: 8px;
+    background: var(--wb-muted);
+    color: var(--wb-text);
+    cursor: pointer;
+}
+.workbench-slot-actions svg {
+    width: 15px;
+    height: 15px;
+}
+.workbench-parameters-popover {
+    --wb-text: var(--user-ink, var(--foreground));
+    --wb-text-muted: var(--user-ink-muted, var(--muted-foreground));
+    --wb-text-soft: var(--user-ink-soft, var(--muted-foreground));
+    --wb-surface: var(--user-surface, var(--background));
+    --wb-muted: var(--user-surface-muted, var(--muted));
+    --wb-hover: var(--user-surface-hover, var(--muted));
+    --wb-edge: var(--user-border, var(--border));
+    --user-primary: var(--user-accent, var(--workspace-accent));
+    width: min(440px, calc(100vw - 24px));
+    max-width: calc(100vw - 24px);
+}
+.workbench-parameters-popover .workbench-settings-content {
+    max-height: min(560px, 65svh);
+    overflow: auto;
+    overscroll-behavior: contain;
+}
+
+.workbench-composer-dock > .workbench-parameters-trigger {
+    flex: 0 0 auto;
+    align-self: center;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+    margin: 0;
+    padding: 0;
+    justify-content: center;
+}
+.workbench-composer-dock > .workbench-parameters-trigger > span,
+.workbench-composer-dock > .workbench-parameters-trigger > svg:last-child {
+    display: none;
+}
+.workbench-composer-dock > div:has(> .workbench-model-picker) {
+    width: auto;
+    min-width: 0;
+}
+.workbench-composer-dock > .workbench-submit.ant-btn {
+    gap: 6px;
+    min-width: 0;
+    margin: 0;
+    padding-inline: 10px;
+    font-size: 12px;
+}
+.workbench-submit-price {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+.workbench-reference-placeholder {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    gap: 5px;
+    width: 100%;
+    min-width: 0;
+    height: 104px;
+    padding: 8px;
+    border: 1px dashed var(--wb-edge);
+    border-radius: 12px;
+    background: var(--wb-muted);
+    color: var(--wb-text-soft);
+    font: inherit;
+    font-size: 11px;
+    cursor: pointer;
+}
+.workbench-reference-placeholder:hover:not(:disabled) {
+    background: var(--wb-hover);
+    color: var(--wb-text);
+}
+.workbench-reference-placeholder:disabled {
+    opacity: .5;
+    cursor: default;
+}
+.workbench-reference-placeholder svg {
+    width: 20px;
+    height: 20px;
+}
+.workbench-reference-placeholder.workbench-reference-slot-empty {
+    grid-template-columns: 1fr;
+    text-align: center;
+}
+.workbench-reference-preview-trigger {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    background: var(--wb-muted);
+    cursor: zoom-in;
+}
+.workbench-reference-preview-trigger:focus-visible,
+.workbench-reference-placeholder:focus-visible {
+    outline: 2px solid var(--user-focus-ring, var(--wb-text));
+    outline-offset: -3px;
+}
+.workbench-reference-preview-media {
+    display: grid;
+    place-items: center;
+    min-height: 220px;
+    max-height: 76svh;
+    overflow: auto;
+    background: var(--user-surface-muted, var(--muted));
+}
+.workbench-reference-preview-content {
+    display: block;
+    max-width: 100%;
+    max-height: 74svh;
+    object-fit: contain;
+}
+.workbench-reference-preview-media audio {
+    width: min(480px, 90%);
 }

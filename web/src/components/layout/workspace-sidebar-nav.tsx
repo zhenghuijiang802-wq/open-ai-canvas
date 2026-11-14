@@ -1,5 +1,5 @@
 import { Popover } from "antd";
-import { ChevronDown, ChevronRight, CircleUserRound, History as HistoryIcon, Image as ImageIcon, Infinity as InfinityIcon, PanelLeftClose, PanelLeftOpen, Plus, Video } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, CircleUserRound, History as HistoryIcon, Image as ImageIcon, Infinity as InfinityIcon, PanelLeftClose, PanelLeftOpen, Plus, Video } from "lucide-react";
 import { LayoutGroup, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router";
@@ -54,6 +54,7 @@ function buildNav(features: FeatureAvailability): { groups: WorkspaceNavGroup[];
             heading: "资源与工具",
             items: [
                 ...(features.imageWorkbenchEnabled ? [{ id: "toolbox-image", title: "图片生成", icon: ImageIcon, to: "/toolbox/image" }] : []),
+                ...(features.imageWorkbenchEnabled ? [{ id: "toolbox-comic", title: "漫画制作", icon: BookOpen, to: "/toolbox/comic" }] : []),
                 ...(features.videoWorkbenchEnabled ? [{ id: "toolbox-video", title: "视频生成", icon: Video, to: "/toolbox/video" }] : []),
                 { ...toolItem("skills", "/skills"), title: "技能" },
                 ...(features.pluginCenterEnabled ? [{ ...toolItem("plugins", "/plugins"), title: "插件" }] : []),

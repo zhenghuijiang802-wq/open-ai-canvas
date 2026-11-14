@@ -571,8 +571,16 @@ func (s *Service) advanceCloudAgentTool(run *model.CloudAgentExecution, state *c
 			})
 		}
 	}
-	if allowed && (cloudAgentMediaTool(call.Function.Name)) && state.Approval != nil && state.Approval.Decision == "approve" {
-		return s.advanceCloudAgentMedia(run, state, cloudAgentMediaCall(call))
+	if allowed && cloudAgentMediaTool(call.Function.Name) {
+		if state.Approval != nil && state.Approval.Decision == "approve" {
+			return s.advanceCloudAgentMedia(run, state, cloudAgentMediaCall(call))
+		}
+		if state.Request.PermissionMode == "auto" && state.Approval == nil {
+			if state.MediaTaskID != "" {
+				return s.advanceCloudAgentMedia(run, state, cloudAgentMediaCall(call))
+			}
+			return s.advanceCloudAgentMediaAuto(run, state, cloudAgentMediaCall(call))
+		}
 	}
 	policy, err := s.RuntimePolicy()
 	if err != nil {

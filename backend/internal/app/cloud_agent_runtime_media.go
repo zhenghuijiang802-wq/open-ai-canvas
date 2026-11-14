@@ -390,6 +390,64 @@ func (s *Service) advanceCloudAgentMedia(run *model.CloudAgentExecution, state *
 	return s.enqueueCloudAgentTask(run, state, req, plan)
 }
 
+func (s *Service) advanceCloudAgentMediaAuto(run *model.CloudAgentExecution, state *cloudAgentRuntime, call cloudAgentCall) error {
+	policy, err := s.RuntimePolicy()
+	if err != nil {
+		return s.terminateCloudAgent(run, "Agent 运行策略不可用，本轮已停止")
+	}
+	mediaCall := cloudAgentMediaCall(call)
+	req, plan, err := s.prepareCloudAgentMedia(run, state, mediaCall)
+	if err != nil {
+		return s.cloudAgentMediaError(run, state, "admission", false, false, err)
+	}
+	mediaPreparation := &creationTaskPreparation{}
+	req.creationPrepare = mediaPreparation
+	preparedTask, err := s.CreateTask(run.UserID, req)
+	if err != nil {
+		return s.cloudAgentMediaError(run, state, "admission", false, false, err)
+	}
+	if err := applyCloudAgentResolvedMediaDefaults(&req, plan, preparedTask); err != nil {
+		return s.cloudAgentMediaError(run, state, "admission", false, false, err)
+	}
+	if err := validateCloudAgentMediaBudget(plan.Args, state); err != nil {
+		return s.cloudAgentMediaError(run, state, "admission", false, false, err)
+	}
+	s.storageMu.Lock()
+	err = s.repo.MutateCloudAgent(run.UserID, run.ID, run.Revision, func(current *model.CloudAgentExecution, repo *repository.Repository) error {
+		if err := createCloudAgentMediaNode(repo, run.UserID, state.Request.CanvasID, plan, nil, policy, cloudAgentCanvasEventRecorder(run.ID, state)); err != nil {
+			return err
+		}
+		canvas, err := repo.CanvasProjectForUser(run.UserID, state.Request.CanvasID)
+		if err != nil {
+			return err
+		}
+		doc, err := creationDocument(canvas.PayloadJSON)
+		if err != nil {
+			return err
+		}
+		plan.Args.SnapshotHash = cloudAgentMediaContentHash(doc)
+		raw, err := json.Marshal(plan.Args)
+		if err != nil {
+			return err
+		}
+		call.Function.Arguments = string(raw)
+		state.Calls[state.CallIndex] = call
+		preparedMedia, err := prepareCloudAgentMediaApproval(repo, run.UserID, doc, plan, req, preparedTask, mediaPreparation.Order)
+		if err != nil {
+			return err
+		}
+		plan.Prepared = preparedMedia
+		state.AutoPreparedMedia = preparedMedia
+		state.AutoPreparedCallHash = cloudAgentApprovalCallHash(call)
+		return cloudAgentSave(current, state)
+	})
+	s.storageMu.Unlock()
+	if err != nil {
+		return s.cloudAgentMediaError(run, state, "admission", false, false, err)
+	}
+	return s.enqueueCloudAgentTask(run, state, req, plan)
+}
+
 func (s *Service) DecideCloudAgentApproval(userID, id, approvalID, decision, reason string, mediaSettings ...*CloudAgentMediaSettings) error {
 	// Resource leases are a protection mechanism only. Expiry cleanup is safe to
 	// run on the control-plane path and never changes the approval decision.

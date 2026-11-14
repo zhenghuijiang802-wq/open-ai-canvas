@@ -50,12 +50,14 @@ const CanvasProjectPage = lazy(loadCanvasProjectPage);
 const SharedCanvasPage = lazy(() => import("@/pages/canvas/shared"));
 const CreatePage = lazy(loadCreatePage);
 const ImageWorkbenchPage = lazy(() => import("@/pages/workbench/image-workbench-route"));
+const ComicWorkbenchPage = lazy(() => import("@/pages/workbench/comic-workbench-page"));
 const VideoWorkbenchPage = lazy(() => import("@/pages/workbench/video-workbench-page"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const SkillsPage = lazy(() => import("@/pages/skills"));
 const SkillWorkbenchPage = lazy(loadSkillWorkbenchPage);
 const PluginsPage = lazy(() => import("@/pages/plugins"));
 const EagleLibraryPage = lazy(() => import("@/pages/plugins/eagle"));
+const PoseGalleryPage = lazy(() => import("@/pages/plugins/pose-gallery"));
 const TasksPage = lazy(() => import("@/pages/tasks"));
 const ProjectsPage = lazy(loadProjectsPage);
 const ProjectDetailPage = lazy(loadProjectDetailPage);
@@ -142,6 +144,14 @@ export const router = createBrowserRouter([
                 ),
             },
             {
+                path: "/toolbox/comic",
+                element: (
+                    <RequireAuth>
+                        <RequireFeature feature="imageWorkbenchEnabled">{deferred(<ComicWorkbenchPage />)}</RequireFeature>
+                    </RequireAuth>
+                ),
+            },
+            {
                 path: "/tasks",
                 element: (
                     <RequireAuth>
@@ -159,6 +169,10 @@ export const router = createBrowserRouter([
                         <RequireFeature feature="pluginCenterEnabled">{deferred(<PluginsPage />)}</RequireFeature>
                     </RequireAuth>
                 ),
+            },
+            {
+                path: "/plugins/pose-gallery",
+                element: <RequireAuth><RequireFeature feature="pluginCenterEnabled">{deferred(<PoseGalleryPage />)}</RequireFeature></RequireAuth>,
             },
             {
                 path: "/plugins/eagle",

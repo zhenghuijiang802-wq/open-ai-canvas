@@ -12,6 +12,7 @@ import (
 
 	"gorm.io/gorm"
 	"yingce/backend/internal/canvas"
+	"yingce/backend/internal/canvas/contract"
 	"yingce/backend/internal/model"
 	"yingce/backend/internal/repository"
 )
@@ -1075,6 +1076,16 @@ func createCloudAgentMediaNode(repo *repository.Repository, userID, canvasID str
 	replaced := false
 	for _, existing := range nodes {
 		if stringValue(existing["id"]) == a.NodeID {
+			if comic := contract.ComicNodeMetadata(existing); comic != nil {
+				meta["comic"] = comic
+				previous, _ := existing["metadata"].(map[string]any)
+				if kind, ok := previous["workflowKind"].(string); ok {
+					switch kind {
+					case "comic", "character", "scene", "prop", "shot":
+						meta["workflowKind"] = kind
+					}
+				}
+			}
 			existing["metadata"] = meta
 			if task == nil {
 				existing["title"] = a.Title

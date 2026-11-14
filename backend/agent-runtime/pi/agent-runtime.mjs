@@ -159,7 +159,7 @@ async function run() {
             tools: (context.tools ?? []).map((tool) => ({
               name: tool.name,
               description: tool.description,
-              parameters: tool.parameters,
+              parameters: sanitizeToolParameters(tool.parameters),
             })),
             thinkingLevel: options?.reasoning ?? "off",
             contextUsage: session.getContextUsage(),
@@ -200,6 +200,16 @@ async function run() {
   const model = modelRuntime.getModel(providerID, request.model.id);
   if (!model) throw new Error("Agent model registration failed");
 
+function sanitizeToolParameters(params) {
+  if (!params || typeof params !== "object") return params;
+  const copy = { ...params };
+  delete copy.oneOf;
+  delete copy.anyOf;
+  delete copy.allOf;
+  delete copy.not;
+  return copy;
+}
+
   let session;
   // 工具进入审批时主动中止本轮；这是暂停，不是失败。
   let pausedForApproval = false;
@@ -208,7 +218,7 @@ async function run() {
     name: tool.name,
     label: tool.label || tool.name,
     description: tool.description || tool.name,
-    parameters: Type.Unsafe(tool.parameters ?? { type: "object", properties: {} }),
+    parameters: Type.Unsafe(sanitizeToolParameters(tool.parameters ?? { type: "object", properties: {} })),
     executionMode: tool.executionMode || "sequential",
     async execute(toolCallId, params, signal) {
       // SDK 在 execute 之前拒绝的调用也要先写回 Go 的调用游标。

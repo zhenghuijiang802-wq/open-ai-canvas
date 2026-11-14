@@ -1,0 +1,12 @@
+export type PoseRow = {id:string;title:string;system:string;code:string;category:string;angle:string;group:string;thumbnailUrl:string;fileUrl:string};
+export type Catalog = { load(signal?:AbortSignal):Promise<PoseRow[]>; download(id:string,signal?:AbortSignal):Promise<Blob> };
+export const ID:string;
+export const DEFAULT_BASE:string;
+export const DEFAULT_SYSTEMS:string[];
+export const ANGLES:string[];
+export function baseUrl(value?:string):string;
+export function mediaUrl(base:string,path:string,kind:string):string;
+export function normalize(rows:unknown,base?:string,systems?:string[]):PoseRow[];
+export function groups(rows:PoseRow[]):PoseRow[][];
+export function select(rows:PoseRow[],query?:{keyword?:string;system?:string;category?:string;angle?:string;offset?:number;limit?:number}):{total:number;rows:PoseRow[]};
+export function createCatalog(options?:{base?:string;systems?:string[];fetcher?:typeof fetch}):Catalog;

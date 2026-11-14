@@ -28,7 +28,7 @@ type PublicCreditPolicy struct {
 }
 
 func defaultCreditPolicy() CreditPolicy {
-	return CreditPolicy{SignupBonusMicrocredits: 100 * CreditScale, CheckinBonusMicrocredits: 10 * CreditScale, DefaultMultiplierBPS: 10_000, ModelMultiplierBPS: map[string]int64{}}
+	return CreditPolicy{SignupBonusMicrocredits: 100 * CreditScale, CheckinBonusMicrocredits: 10 * CreditScale, DefaultMultiplierBPS: 20_000, ModelMultiplierBPS: map[string]int64{}}
 }
 
 func validateCreditPolicy(policy CreditPolicy) error {

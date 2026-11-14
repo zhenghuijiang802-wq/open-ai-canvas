@@ -7,6 +7,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"math"
+	"strconv"
 	"strings"
 
 	"gorm.io/gorm"
@@ -14,7 +16,17 @@ import (
 )
 
 func (s *Service) estimateCallCost(log *model.ApiCallLog) {
-	if log.Status == model.ApiCallStatusFailed && !log.UsageAvailable {
+	if log.Status == model.ApiCallStatusFailed && !log.UsageAvailable && !log.CostAvailable {
+		return
+	}
+	if log.CostAvailable {
+		if log.Currency == "" {
+			if pricing, err := s.repo.ModelPricing(log.ChannelID, log.Model, log.Capability); err == nil && pricing.Currency != "" {
+				log.Currency = pricing.Currency
+			} else {
+				log.Currency = "CNY"
+			}
+		}
 		return
 	}
 	pricing, err := s.repo.ModelPricing(log.ChannelID, log.Model, log.Capability)
@@ -100,8 +112,56 @@ func (s *Service) enrichAPICallLogPayload(log *model.ApiCallLog, payload map[str
 			log.Error = errorMessage
 		}
 	}
+	if cost, ok := firstFloat64Value(payload, "cost_usd"); ok && cost > 0 {
+		log.EstimatedCostMicros = int64(math.Round(cost * 1_000_000))
+		log.CostAvailable = true
+		if log.Currency == "" {
+			log.Currency = "USD"
+		}
+	} else if cost, ok := firstFloat64Value(payload, "cost_cny"); ok && cost > 0 {
+		log.EstimatedCostMicros = int64(math.Round(cost * 1_000_000))
+		log.CostAvailable = true
+		if log.Currency == "" {
+			log.Currency = "CNY"
+		}
+	} else if cost, ok := firstFloat64Value(payload, "cost", "total_cost"); ok && cost > 0 {
+		log.EstimatedCostMicros = int64(math.Round(cost * 1_000_000))
+		log.CostAvailable = true
+		if log.Currency == "" {
+			log.Currency = "CNY"
+		}
+	}
+	if curr, err := firstJSONString(payload, "currency", "cost_currency"); err == nil && curr != "" {
+		log.Currency = strings.ToUpper(curr)
+	}
 	arkVideo := log.Capability == "video" && strings.Contains(log.Path, "/contents/generations/tasks")
 	usage, _ := payload["usage"].(map[string]any)
+	if !log.CostAvailable && usage != nil {
+		if cost, ok := firstFloat64Value(usage, "cost_usd"); ok && cost > 0 {
+			log.EstimatedCostMicros = int64(math.Round(cost * 1_000_000))
+			log.CostAvailable = true
+			if log.Currency == "" {
+				log.Currency = "USD"
+			}
+		} else if cost, ok := firstFloat64Value(usage, "cost_cny"); ok && cost > 0 {
+			log.EstimatedCostMicros = int64(math.Round(cost * 1_000_000))
+			log.CostAvailable = true
+			if log.Currency == "" {
+				log.Currency = "CNY"
+			}
+		} else if cost, ok := firstFloat64Value(usage, "cost", "total_cost"); ok && cost > 0 {
+			log.EstimatedCostMicros = int64(math.Round(cost * 1_000_000))
+			log.CostAvailable = true
+			if log.Currency == "" {
+				log.Currency = "CNY"
+			}
+		}
+	}
+	if usage != nil {
+		if curr, err := firstJSONString(usage, "currency", "cost_currency"); err == nil && curr != "" {
+			log.Currency = strings.ToUpper(curr)
+		}
+	}
 	if log.Capability == "video" {
 		log.InputTokens, log.CachedTokens = 0, 0
 		log.OutputTokens, log.UsageAvailable = videoCompletionTokens(payload, arkVideo)
@@ -269,6 +329,30 @@ func firstInt64Value(values map[string]any, keys ...string) (int64, bool) {
 		case json.Number:
 			parsed, err := value.Int64()
 			return parsed, err == nil
+		}
+	}
+	return 0, false
+}
+
+func firstFloat64Value(values map[string]any, keys ...string) (float64, bool) {
+	for _, key := range keys {
+		switch value := values[key].(type) {
+		case float64:
+			return value, true
+		case float32:
+			return float64(value), true
+		case int:
+			return float64(value), true
+		case int64:
+			return float64(value), true
+		case json.Number:
+			if parsed, err := value.Float64(); err == nil {
+				return parsed, true
+			}
+		case string:
+			if parsed, err := strconv.ParseFloat(strings.TrimSpace(value), 64); err == nil {
+				return parsed, true
+			}
 		}
 	}
 	return 0, false

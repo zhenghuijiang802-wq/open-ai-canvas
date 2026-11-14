@@ -358,6 +358,10 @@ func (s *Service) decryptOSSSettingSecrets(value *ossSettingValue) (bool, error)
 	return needsMigration, nil
 }
 
+func (s *Service) EncryptSettingSecret(value string) (string, error) {
+	return s.encryptSettingSecret(value)
+}
+
 func (s *Service) encryptSettingSecret(value string) (string, error) {
 	if value == "" {
 		return "", nil

@@ -252,6 +252,83 @@
                   false
                 ]
               }
+            },
+            "prompt": {
+              "$ref": "request.prompt"
+            },
+            "duration": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$ref": "request.duration"
+                    },
+                    0
+                  ]
+                },
+                "then": {
+                  "$ref": "request.duration"
+                },
+                "else": 5
+              }
+            },
+            "seconds": {
+              "$toString": {
+                "$if": {
+                  "condition": {
+                    "$gt": [
+                      {
+                        "$ref": "request.duration"
+                      },
+                      0
+                    ]
+                  },
+                  "then": {
+                    "$ref": "request.duration"
+                  },
+                  "else": 5
+                }
+              }
+            },
+            "workflow_id": {
+              "$if": {
+                "condition": {
+                  "$gt": [
+                    {
+                      "$len": {
+                        "$ref": "request.images"
+                      }
+                    },
+                    0
+                  ]
+                },
+                "then": "fl2v",
+                "else": "t2v"
+              }
+            },
+            "aspect_ratio": {
+              "$coalesce": [
+                {
+                  "$ref": "request.aspectRatio"
+                },
+                "16:9"
+              ]
+            },
+            "megapixels": 1,
+            "images": {
+              "$omitEmpty": {
+                "$map": {
+                  "from": {
+                    "$sortByOrder": {
+                      "$ref": "request.images"
+                    }
+                  },
+                  "as": "media",
+                  "in": {
+                    "$ref": "media.value"
+                  }
+                }
+              }
             }
           }
         },
@@ -325,6 +402,21 @@
               },
               {
                 "$ref": "response.output.url"
+              },
+              {
+                "$ref": "response.metadata.url"
+              },
+              {
+                "$ref": "response.data.metadata.url"
+              },
+              {
+                "$ref": "response.data.output_url"
+              },
+              {
+                "$ref": "response.data.result_url"
+              },
+              {
+                "$ref": "response.data.url"
               }
             ]
           },

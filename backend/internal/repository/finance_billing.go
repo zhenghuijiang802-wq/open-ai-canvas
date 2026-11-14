@@ -8,6 +8,7 @@ package repository
 import (
 	"errors"
 	"fmt"
+	"math/big"
 	"strings"
 	"time"
 
@@ -188,6 +189,24 @@ func billingUsage(db *gorm.DB, orderID string) (*BillingUsage, error) {
 	return &BillingUsage{InputTokens: log.InputTokens, OutputTokens: log.OutputTokens, CachedTokens: log.CachedTokens}, nil
 }
 
+func billingObservedCost(db *gorm.DB, orderID, taskID string) (*model.ApiCallLog, bool) {
+	var log model.ApiCallLog
+	query := db.Where("status = ? AND cost_available = ? AND estimated_cost_micros > 0", model.ApiCallStatusSucceeded, true)
+	if orderID != "" && taskID != "" {
+		query = query.Where("billing_order_id = ? OR task_id = ?", orderID, taskID)
+	} else if orderID != "" {
+		query = query.Where("billing_order_id = ?", orderID)
+	} else if taskID != "" {
+		query = query.Where("task_id = ?", taskID)
+	} else {
+		return nil, false
+	}
+	if err := query.Order("created_at desc").First(&log).Error; err == nil {
+		return &log, true
+	}
+	return nil, false
+}
+
 const (
 	billingUsageSourceProvider     = "provider"
 	billingUsageSourceVideoFormula = "video_formula"
@@ -366,6 +385,101 @@ func (r *Repository) settleBillingOrder(id string, providerRequestID string, aud
 		quantity := order.Quantity
 		refund := int64(0)
 		supplement := int64(0)
+		// 检查上游网关是否动态返回了实际调用成本（如 MoAI / NewAPI 返回的 cost 字段）
+		if observedLog, hasCost := billingObservedCost(tx, order.ID, order.TaskID); hasCost && observedLog.EstimatedCostMicros > 0 {
+			costMicros := observedLog.EstimatedCostMicros
+			rate := order.CurrencyRateMicrocredits
+			if rate <= 0 {
+				rate = 1_000_000
+			}
+			costInMicrocredits := costMicros
+			if rate != 1_000_000 {
+				prod := new(big.Int).Mul(big.NewInt(costMicros), big.NewInt(rate))
+				prod.Add(prod, big.NewInt(999_999))
+				prod.Quo(prod, big.NewInt(1_000_000))
+				costInMicrocredits = prod.Int64()
+			}
+			multiplierBPS := order.MultiplierBasisPoints
+			if multiplierBPS <= 0 {
+				multiplierBPS = 20_000
+			}
+			actual = (costInMicrocredits*multiplierBPS + 9_999) / 10_000
+			if billingChargeLimitApplies(order) && actual > order.ChargeLimitMicrocredits {
+				actual = order.ChargeLimitMicrocredits
+			}
+			if order.BillingMode == "per_second" {
+				if audioDurationMs != nil && *audioDurationMs > 0 {
+					quantity = (*audioDurationMs + 999) / 1000
+				} else if observedLog.VideoSeconds > 0 {
+					quantity = int64(observedLog.VideoSeconds)
+				}
+			}
+			reserved := order.ReservedAmountMicrocredits
+			if reserved <= 0 {
+				reserved = order.AmountMicrocredits
+			}
+			refund = max(reserved-actual, int64(0))
+			supplement = max(actual-reserved, int64(0))
+			updated := tx.Model(&model.CreditAccount{}).
+				Where("user_id = ? AND reserved_microcredits >= ? AND available_microcredits >= ?", order.UserID, reserved, supplement).
+				Updates(map[string]any{
+					"available_microcredits": gorm.Expr("available_microcredits + ?", refund-supplement),
+					"reserved_microcredits":  gorm.Expr("reserved_microcredits - ?", reserved),
+					"version":                gorm.Expr("version + 1"),
+					"updated_at":             time.Now(),
+				})
+			if updated.Error != nil {
+				return updated.Error
+			}
+			if updated.RowsAffected != 1 {
+				return errors.New("预留积分不足以完成实际结算")
+			}
+			var account model.CreditAccount
+			if err := tx.First(&account, "user_id = ?", order.UserID).Error; err != nil {
+				return err
+			}
+			now := time.Now()
+			orderUpdates := map[string]any{
+				"status":                       model.BillingStatusSettled,
+				"quantity":                     quantity,
+				"actual_amount_microcredits":   actual,
+				"refunded_amount_microcredits": refund,
+				"cost_quantity":                quantity,
+				"cost_unit_price_microcredits": costInMicrocredits,
+				"cost_configured":              true,
+				"settled_at":                   &now,
+				"updated_at":                   now,
+			}
+			if providerRequestID != "" {
+				orderUpdates["provider_request_id"] = providerRequestID
+			}
+			if err := tx.Model(&order).Updates(orderUpdates).Error; err != nil {
+				return err
+			}
+			note := "按上游进价 2 倍折算扣除积分"
+			if supplement > 0 {
+				note += "，已补扣差额"
+			}
+			if err := tx.Create(&model.CreditLedgerEntry{
+				ID: newRepositoryID(), UserID: order.UserID, Type: model.CreditLedgerConsume,
+				AmountMicrocredits: -actual, AvailableDeltaMicrocredits: -supplement, ReservedDeltaMicrocredits: -reserved,
+				AvailableAfterMicrocredits: account.AvailableMicrocredits, ReservedAfterMicrocredits: account.ReservedMicrocredits,
+				BillingOrderID: order.ID, Model: order.Model, ChannelID: order.ChannelID, Scene: order.Scene, Note: note,
+			}).Error; err != nil {
+				return err
+			}
+			if refund > 0 {
+				if err := tx.Create(&model.CreditLedgerEntry{
+					ID: newRepositoryID(), UserID: order.UserID, Type: model.CreditLedgerRefund,
+					AmountMicrocredits: refund, AvailableDeltaMicrocredits: refund,
+					AvailableAfterMicrocredits: account.AvailableMicrocredits, ReservedAfterMicrocredits: account.ReservedMicrocredits,
+					BillingOrderID: order.ID, Model: order.Model, ChannelID: order.ChannelID, Scene: order.Scene, Note: "上游真实成本低于预授权，差额退回",
+				}).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}
 		// 音频始终按实测时长结算；视频处理任务（画质增强等）由调用方显式传入输出时长，
 		// 普通视频生成仍传 nil，保持按请求时长一次扣定。
 		if order.BillingMode == "per_second" && (order.Capability == "audio" || (order.Capability == "video" && audioDurationMs != nil)) {

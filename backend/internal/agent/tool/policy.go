@@ -98,6 +98,9 @@ func (p Policy) ReadOnly() bool { return p.Kind == KindRead }
 func (p Policy) Media() bool { return p.Kind == KindMedia }
 
 func (p Policy) ApprovalRequired(permissionMode string) bool {
+	if permissionMode == "auto" {
+		return false
+	}
 	return p.Media() || (p.Write() && (p.AlwaysApprove || permissionMode == "request_approval"))
 }
 

@@ -1,0 +1,23 @@
+.costume-picker { color: var(--user-ink); }
+.costume-intro, .costume-credit, .costume-scroll > p, .costume-detail > p { color: var(--user-ink-muted); font-size: var(--fs-caption); }
+.costume-filters { display: flex; gap: var(--space-3); margin-block: var(--space-3); }
+.costume-filters > .ant-select { min-width: 150px; }
+.costume-body { display: grid; gap: var(--space-4); }
+.costume-body.has-selection { grid-template-columns: minmax(0, 1fr) minmax(240px, 32%); }
+.costume-scroll { max-height: 60svh; min-height: 200px; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-1); }
+.costume-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(125px, 1fr)); gap: var(--space-3); margin-bottom: var(--space-3); }
+.costume-card { min-width: 0; padding: 0; overflow: hidden; border: 1px solid var(--user-border); border-radius: var(--user-radius-control); background: var(--user-surface); color: var(--user-ink); cursor: pointer; }
+.costume-card[aria-pressed="true"] { border-color: var(--control-selected-border); box-shadow: 0 0 0 1px var(--control-selected-border); }
+.costume-card:focus-visible { outline: 2px solid var(--control-focus-ring); outline-offset: 2px; }
+.costume-card:disabled { cursor: wait; opacity: .6; }
+.costume-thumb { display: block; aspect-ratio: 3 / 4; background: var(--user-surface-muted); overflow: hidden; }
+.costume-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.costume-card > span:last-child { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1); padding: var(--space-2); font-size: var(--fs-caption); }
+.costume-card small { color: var(--user-ink-muted); }
+.costume-detail { min-width: 0; align-self: start; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3); background: var(--user-surface-muted); border-radius: var(--user-radius-control); }
+.costume-preview { height: clamp(180px, 35svh, 390px); }
+.costume-preview img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.costume-detail > p { margin: 0; overflow-wrap: anywhere; }
+.costume-credit { margin: var(--space-3) 0 0; }
+.costume-error { color: var(--user-ink); padding: var(--space-2); }
+@media (max-width: 640px) { .costume-filters { flex-wrap: wrap; } .costume-filters > .ant-input-affix-wrapper { order: 1; width: 100%; } .costume-body.has-selection { grid-template-columns: 1fr; } .costume-detail { order: -1; } .costume-preview { height: 200px; } .costume-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }

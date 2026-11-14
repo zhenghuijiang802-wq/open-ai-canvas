@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"yingce/backend/internal/kernel"
 	"yingce/backend/internal/model"
@@ -45,17 +47,19 @@ type TaskSummary struct {
 }
 
 type TaskClientContext struct {
-	NodeID           string `json:"nodeId,omitempty"`
-	ConversationID   string `json:"conversationId,omitempty"`
-	MessageID        string `json:"messageId,omitempty"`
-	BatchIndex       int    `json:"batchIndex,omitempty"`
-	BatchCount       int    `json:"batchCount,omitempty"`
-	DomainProjectID  string `json:"domainProjectId,omitempty"`
-	ChapterID        string `json:"chapterId,omitempty"`
-	ChapterOperation string `json:"chapterOperation,omitempty"`
-	ShotID           string `json:"shotId,omitempty"`
-	WorkflowStepID   string `json:"workflowStepId,omitempty"`
-	ArtifactType     string `json:"artifactType,omitempty"`
+	NodeID            string `json:"nodeId,omitempty"`
+	ClientOperationID string `json:"clientOperationId,omitempty"`
+	ComicSourceNodeID string `json:"comicSourceNodeId,omitempty"`
+	ConversationID    string `json:"conversationId,omitempty"`
+	MessageID         string `json:"messageId,omitempty"`
+	BatchIndex        int    `json:"batchIndex,omitempty"`
+	BatchCount        int    `json:"batchCount,omitempty"`
+	DomainProjectID   string `json:"domainProjectId,omitempty"`
+	ChapterID         string `json:"chapterId,omitempty"`
+	ChapterOperation  string `json:"chapterOperation,omitempty"`
+	ShotID            string `json:"shotId,omitempty"`
+	WorkflowStepID    string `json:"workflowStepId,omitempty"`
+	ArtifactType      string `json:"artifactType,omitempty"`
 }
 
 type TaskBillingSummary struct {
@@ -140,25 +144,31 @@ func taskSummaryForOutput(task model.Task) TaskSummary {
 func taskClientContext(raw string) *TaskClientContext {
 	var input struct {
 		Metadata struct {
-			Source          string `json:"source"`
-			NodeID          string `json:"nodeId"`
-			ConversationID  string `json:"conversationId"`
-			MessageID       string `json:"messageId"`
-			BatchIndex      int    `json:"batchIndex"`
-			BatchCount      int    `json:"batchCount"`
-			DomainProjectID string `json:"domainProjectId"`
-			ChapterID       string `json:"chapterId"`
-			Operation       string `json:"operation"`
-			ShotID          string `json:"shotId"`
-			WorkflowStepID  string `json:"workflowStepId"`
-			ArtifactType    string `json:"artifactType"`
+			Source            string `json:"source"`
+			NodeID            string `json:"nodeId"`
+			ClientOperationID any    `json:"clientOperationId"`
+			ComicSourceNodeID any    `json:"comicSourceNodeId"`
+			ConversationID    string `json:"conversationId"`
+			MessageID         string `json:"messageId"`
+			BatchIndex        int    `json:"batchIndex"`
+			BatchCount        int    `json:"batchCount"`
+			DomainProjectID   string `json:"domainProjectId"`
+			ChapterID         string `json:"chapterId"`
+			Operation         string `json:"operation"`
+			ShotID            string `json:"shotId"`
+			WorkflowStepID    string `json:"workflowStepId"`
+			ArtifactType      string `json:"artifactType"`
 		} `json:"metadata"`
 	}
 	if json.Unmarshal([]byte(raw), &input) != nil {
 		return nil
 	}
 	metadata := input.Metadata
-	context := &TaskClientContext{NodeID: metadata.NodeID}
+	context := &TaskClientContext{
+		NodeID:            metadata.NodeID,
+		ClientOperationID: taskAssociationID(metadata.ClientOperationID, 128),
+		ComicSourceNodeID: taskAssociationID(metadata.ComicSourceNodeID, 80),
+	}
 	if metadata.Source == "create-page" && metadata.ConversationID != "" && metadata.MessageID != "" {
 		context.ConversationID = metadata.ConversationID
 		context.MessageID = metadata.MessageID
@@ -180,7 +190,7 @@ func taskClientContext(raw string) *TaskClientContext {
 		chapterOperation = "storyboard"
 	}
 	if chapterOperation == "" || metadata.DomainProjectID == "" || metadata.ChapterID == "" {
-		if context.NodeID == "" {
+		if context.NodeID == "" && context.ClientOperationID == "" && context.ComicSourceNodeID == "" {
 			return nil
 		}
 		return context
@@ -189,6 +199,21 @@ func taskClientContext(raw string) *TaskClientContext {
 	context.ChapterID = metadata.ChapterID
 	context.ChapterOperation = chapterOperation
 	return context
+}
+
+// These IDs correlate a submitted request with an existing task. They are not
+// idempotency keys: returning them does not authorize repeating a POST.
+func taskAssociationID(value any, limit int) string {
+	id, ok := value.(string)
+	if !ok || id == "" || strings.TrimSpace(id) != id || !utf8.ValidString(id) || utf8.RuneCountInString(id) > limit {
+		return ""
+	}
+	for _, r := range id {
+		if unicode.IsControl(r) {
+			return ""
+		}
+	}
+	return id
 }
 
 // 列表只暴露首个可访问媒体地址，避免把完整生成结果和内嵌数据带回前端。
@@ -323,6 +348,15 @@ func publicTaskInputJSON(raw string) string {
 	}
 	if len(public) == 0 {
 		return ""
+	}
+	if metadata, ok := public["metadata"].(map[string]any); ok {
+		for key, limit := range map[string]int{"clientOperationId": 128, "comicSourceNodeId": 80} {
+			if id := taskAssociationID(metadata[key], limit); id != "" {
+				metadata[key] = id
+			} else {
+				delete(metadata, key)
+			}
+		}
 	}
 	if workbench := publicWorkbenchInput(input); workbench != nil {
 		public["workbench"] = workbench

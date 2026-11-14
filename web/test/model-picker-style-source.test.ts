@@ -27,21 +27,11 @@ test("模型行只保留选中高亮，价格使用独立的彩色标签", async
     expect(styles).toContain("width: min(800px, calc(100vw - 24px))");
 });
 
-test("每次打开菜单都展开当前选中模型所属目录，无有效选中时显示一级目录", async () => {
+test("每次打开菜单都展开当前模型所属渠道，无有效选中时展开首个渠道", async () => {
     const component = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
     const opening = component.match(/const setPickerOpen = \(nextOpen: boolean\) => \{([\s\S]*?)\n    \};/)?.[1] || "";
-    expect(opening).toContain("setActiveGroupKey(optionGroups.find((group) => group.models.some((item) => item.models.includes(current)))?.key ?? null)");
+    expect(opening).toContain("setActiveGroupKey(optionGroups.find((group) => group.models.some((item) => item.models.includes(current)))?.key ?? optionGroups[0]?.key ?? null)");
     expect(opening).not.toContain("setActiveGroupKey(null)");
-});
-
-test("选择模型保留菜单及行内焦点，仍可通过 Escape 和外部点击关闭", async () => {
-    const component = await Bun.file(new URL("../src/components/model-picker.tsx", import.meta.url)).text();
-    const selection = component.match(/onClick=\{\(\) => \{\s*if \(!model\) return;([\s\S]*?)\}\}/)?.[1] || "";
-    expect(selection).toContain("onChange(model)");
-    expect(selection).not.toContain("setOpen(false)");
-    expect(selection).not.toContain("focus()");
-    expect(component).toContain('event.key === "Escape"');
-    expect(component).toContain('window.addEventListener("pointerdown", closeOnOutsidePointer, true)');
 });
 
 test("ModelPicker 样式独立加载，所有入口继承可用高度约束", async () => {

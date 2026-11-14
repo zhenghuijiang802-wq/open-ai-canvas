@@ -93,8 +93,8 @@ func TestScopeAndApprovalDoNotGrantMediaInReadOnlyMode(t *testing.T) {
 		if p.Write() && p.Allowed(readOnly) {
 			t.Errorf("%s writable in read_only", name)
 		}
-		if p.Media() && !p.ApprovalRequired("auto") {
-			t.Errorf("%s bypasses media approval in auto", name)
+		if p.Media() && !p.ApprovalRequired("request_approval") {
+			t.Errorf("%s bypasses media approval in request_approval", name)
 		}
 	}
 	if Of(CanvasGetState).Allowed(Scope{IncludeProfile: true}) {

@@ -342,7 +342,7 @@
             },
             "resolution": {
               "$omitEmpty": {
-                "$ref": "request.resolution"
+                "$ref": "request.providerOptions.openai-image.resolution"
               }
             },
             "quality": {
