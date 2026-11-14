@@ -234,6 +234,17 @@ func (s *Service) runCloudAgentModelStep(ctx context.Context, userID, runID stri
 			}
 			continue
 		}
+		if len(state.ParallelMediaTasks) > 0 {
+			for _, pt := range state.ParallelMediaTasks {
+				if _, waitErr := s.waitCloudAgentTask(ctx, pt.TaskID); waitErr != nil && ctx.Err() != nil {
+					return nil, false, ctx.Err()
+				}
+				if err := s.settleCloudAgentParallelMedia(userID, runID, pt.CallID); err != nil {
+					return nil, false, err
+				}
+			}
+			continue
+		}
 		// 重启恢复：上一个运行时进程已为这一步建好模型任务（可能已经出结果），
 		// 只是没来得及把结果交回就退出了。运行时对 /model 串行调用，此时仍挂着的
 		// 步骤任务只可能是这种遗留任务：接手等待它的结果，不再建新任务和订单。

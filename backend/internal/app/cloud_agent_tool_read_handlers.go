@@ -114,6 +114,12 @@ func cloudAgentHandleCanvasGetState(repo *repository.Repository, userID string, 
 	if includeRelated && args.Depth != nil {
 		return nil, &cloudAgentArgumentError{BadAuthRequest("画布读取参数无效：includeRelated 与 depth 不能同时使用")}
 	}
+	if args.Detail != "" && args.Detail != "summary" && args.Detail != "full" {
+		return nil, &cloudAgentArgumentError{BadAuthRequest("画布读取参数无效：detail 必须是 summary 或 full")}
+	}
+	if args.Detail == "full" && len(args.NodeIDs) == 0 && len(args.FocusNodeIDs) == 0 {
+		return nil, &cloudAgentArgumentError{BadAuthRequest("画布读取参数无效：detail=full 只能与 nodeIds 或 focusNodeIds 一起使用")}
+	}
 	canvas, err := repo.CanvasProjectForUser(userID, state.Request.CanvasID)
 	if err != nil {
 		return nil, err
@@ -124,11 +130,11 @@ func cloudAgentHandleCanvasGetState(repo *repository.Repository, userID string, 
 	}
 	if len(args.FocusNodeIDs) > 0 {
 		if includeRelated {
-			return cloudAgentCanvasStateWithRelated(repo, userID, state.Request.CanvasID, doc, args.Offset, args.FocusNodeIDs, args.StoryboardOffset, args.ConnectionOffset)
+			return cloudAgentCanvasStateSelectedWithDetail(repo, userID, state.Request.CanvasID, doc, args.Offset, nil, args.FocusNodeIDs, 0, true, args.StoryboardOffset, args.Detail, args.ConnectionOffset)
 		}
-		return cloudAgentCanvasStateWithFocus(repo, userID, state.Request.CanvasID, doc, args.Offset, args.FocusNodeIDs, depth, args.StoryboardOffset, args.ConnectionOffset)
+		return cloudAgentCanvasStateSelectedWithDetail(repo, userID, state.Request.CanvasID, doc, args.Offset, nil, args.FocusNodeIDs, depth, false, args.StoryboardOffset, args.Detail, args.ConnectionOffset)
 	}
-	return cloudAgentCanvasState(repo, userID, state.Request.CanvasID, doc, args.Offset, args.NodeIDs, args.StoryboardOffset, args.ConnectionOffset)
+	return cloudAgentCanvasStateSelectedWithDetail(repo, userID, state.Request.CanvasID, doc, args.Offset, args.NodeIDs, nil, 0, false, args.StoryboardOffset, args.Detail, args.ConnectionOffset)
 }
 
 func cloudAgentHandleCanvasReadText(repo *repository.Repository, userID string, state *cloudAgentRuntime, call cloudAgentCall, services ...*Service) (any, error) {

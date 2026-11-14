@@ -85,6 +85,16 @@ export function applyAgentEvent(
     }
     if (event.type === "approval_decided") {
         setApproval(null);
+        if (payload.switchedToAuto === true || payload.permissionMode === "auto") {
+            setRun((current) => (current ? { ...current, permissionMode: "auto" } : current));
+            setMessages((current) =>
+                appendUniqueMessage(current, {
+                    id: `${event.eventId}-auto`,
+                    role: "system",
+                    text: "已批准并切换为后续自动执行：预算内的修改与生成将按默认配置自动执行。",
+                }),
+            );
+        }
         if (payload.decision === AGENT_APPROVAL_SUPERSEDED_BY_NODE) {
             setMessages((current) =>
                 appendUniqueMessage(current, {

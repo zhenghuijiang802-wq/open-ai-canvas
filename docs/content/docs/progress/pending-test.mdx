@@ -4108,3 +4108,9 @@ SQLite 与 HTTP recorder 已验证；PostgreSQL 16／17、前端构建及浏览�
 ### 服装图库接入（待用户确认）
 
 检查图片生成页姿势旁的服装入口、分类与中英文搜索、预览、原图加入参考图、数量限制及明暗主题。素材来自 AI Costume Gallery；仅按选择读取单张，不提供批量下载或图库图片再分发。
+
+## 画布 Ctrl 切换抓手/区域选择与 Agent 自动化/提速升级
+
+- 已实现：画布 `Ctrl` 临时切换抓手（`move`）与区域选择（`box-select`）；Agent 新会话默认 `auto` 权限，A+B 组合一次确认预算/默认模型与「批准并后续全自动」（`switchToAuto`），支持 `mediaExecutionMode`（`sequential` 单步 / `parallel` 并发）切换，`canvas_get_state` 新增 `detail: "summary" | "full"` 并限制摘要长度，且生图成功返回后禁止自动重复读取图片或全量画布状态。
+- 本地已查：将在推送前通过 Prettier 格式校验与 Agent 工具 golden JSON 解析校验；因当前宿主机未安装 `go` 与 `bun`，`go test`、`bun run build`、`bun test` 与真实浏览器回归均未在本地运行。
+- [ ] 部署后在服务器验证 Go/前端构建及全部单测，并在浏览器验收 `Ctrl` 按住/松开与输入框聚焦边界、A+B 预算与模型默认值生效、单步/并发执行调度及生图后跳过冗余读图。

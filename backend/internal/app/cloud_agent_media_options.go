@@ -2,11 +2,134 @@ package app
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"yingce/backend/internal/canvas/contract"
 )
+
+func validateCloudAgentMediaDefaults(defaults *CloudAgentMediaDefaults) error {
+	if defaults == nil {
+		return nil
+	}
+	if err := validateCloudAgentMediaDefaultSettings("image", defaults.Image); err != nil {
+		return err
+	}
+	if err := validateCloudAgentMediaDefaultSettings("video", defaults.Video); err != nil {
+		return err
+	}
+	return nil
+}
+
+func validateCloudAgentMediaDefaultSettings(mode string, settings *CloudAgentMediaSettings) error {
+	if settings == nil {
+		return nil
+	}
+	if settings.LogicalModelID != "" && (settings.ChannelID != "" || settings.ChannelModelKey != "") {
+		return BadAuthRequest("默认生成模型选择不能混用逻辑模型和渠道模型")
+	}
+	if (settings.ChannelID != "") != (settings.ChannelModelKey != "") {
+		return BadAuthRequest("默认渠道模型需要同时提供 channelId 与 channelModelKey")
+	}
+	for label, val := range map[string]string{
+		"logicalModelId":  settings.LogicalModelID,
+		"channelId":       settings.ChannelID,
+		"channelModelKey": settings.ChannelModelKey,
+		"size":            settings.Size,
+		"imageResolution": settings.ImageResolution,
+		"quality":         settings.Quality,
+	} {
+		if val != "" && (!utf8.ValidString(val) || utf8.RuneCountInString(val) > 160) {
+			return BadAuthRequest(fmt.Sprintf("默认媒体参数 %s 无效", label))
+		}
+	}
+	if settings.ImageParameters != "" && (!utf8.ValidString(settings.ImageParameters) || len(settings.ImageParameters) > 32768) {
+		return BadAuthRequest("默认图片扩展参数过大或格式无效")
+	}
+	if mode == "image" && (settings.DurationSeconds != nil || settings.VideoGenerateAudio != nil || settings.VideoWatermark != nil || settings.VideoArkPrivateAssetUpload != nil) {
+		return BadAuthRequest("默认图片参数不能包含视频字段")
+	}
+	if mode == "video" && (settings.ImageResolution != "" || settings.ImageParameters != "") {
+		return BadAuthRequest("默认视频参数不能包含图片分辨率参数")
+	}
+	if settings.DurationSeconds != nil && *settings.DurationSeconds < 0 {
+		return BadAuthRequest("默认视频时长不能为负数")
+	}
+	return nil
+}
+
+func cloudAgentMediaDefaultsForMode(defaults *CloudAgentMediaDefaults, mode string) *CloudAgentMediaSettings {
+	if defaults == nil {
+		return nil
+	}
+	switch mode {
+	case "image":
+		return defaults.Image
+	case "video":
+		return defaults.Video
+	default:
+		return nil
+	}
+}
+
+func cloudAgentMediaSettingsMatchModel(a cloudAgentMediaArgs, settings *CloudAgentMediaSettings) bool {
+	if settings == nil {
+		return false
+	}
+	if settings.LogicalModelID == "" && settings.ChannelID == "" && settings.ChannelModelKey == "" {
+		return true
+	}
+	return a.LogicalModelID == settings.LogicalModelID && a.ChannelID == settings.ChannelID && a.ChannelModelKey == settings.ChannelModelKey
+}
+
+func applyCloudAgentRunMediaDefaults(a *cloudAgentMediaArgs, state *cloudAgentRuntime, raw string, hasDraftSelection bool) {
+	if a == nil || state == nil || state.Request.MediaDefaults == nil {
+		return
+	}
+	defaults := cloudAgentMediaDefaultsForMode(state.Request.MediaDefaults, a.Mode)
+	if defaults == nil {
+		return
+	}
+	if !a.ConfigurationChange.includes("model") && !cloudAgentModelSelectionProvided(raw) && !hasDraftSelection && a.LogicalModelID == "" && a.ChannelID == "" && a.ChannelModelKey == "" {
+		a.LogicalModelID, a.ChannelID, a.ChannelModelKey = defaults.LogicalModelID, defaults.ChannelID, defaults.ChannelModelKey
+	}
+	if !cloudAgentMediaSettingsMatchModel(*a, defaults) {
+		return
+	}
+	if a.Size == "" && defaults.Size != "" && !a.ConfigurationChange.includes("size") {
+		a.Size = defaults.Size
+	}
+	if a.Quality == "" && defaults.Quality != "" && !a.ConfigurationChange.includes("quality") {
+		a.Quality = defaults.Quality
+	}
+	if a.Mode == "image" {
+		if a.ImageResolution == "" && defaults.ImageResolution != "" && !a.ConfigurationChange.includes("imageResolution") {
+			a.ImageResolution = defaults.ImageResolution
+		}
+		if a.ImageParameters == "" && defaults.ImageParameters != "" {
+			a.ImageParameters = defaults.ImageParameters
+		}
+	}
+	if a.Mode == "video" {
+		if a.Duration == 0 && defaults.DurationSeconds != nil && *defaults.DurationSeconds > 0 && !a.ConfigurationChange.includes("durationSeconds") {
+			a.Duration = *defaults.DurationSeconds
+		}
+		if a.VideoGenerateAudio == nil && defaults.VideoGenerateAudio != nil && !a.ConfigurationChange.includes("videoGenerateAudio") {
+			v := *defaults.VideoGenerateAudio
+			a.VideoGenerateAudio = &v
+		}
+		if a.VideoWatermark == nil && defaults.VideoWatermark != nil {
+			v := *defaults.VideoWatermark
+			a.VideoWatermark = &v
+		}
+		if a.VideoArkPrivateAssetUpload == nil && defaults.VideoArkPrivateAssetUpload != nil {
+			v := *defaults.VideoArkPrivateAssetUpload
+			a.VideoArkPrivateAssetUpload = &v
+		}
+	}
+}
 
 // Resolve configuration separately from content, graph planning and billed
 // execution. User changes, persisted settings and optional LLM hints have
@@ -22,6 +145,7 @@ func (s *Service) resolveCloudAgentMediaConfiguration(a *cloudAgentMediaArgs, st
 	if selection != nil && !a.ConfigurationChange.includes("model") {
 		a.LogicalModelID, a.ChannelID, a.ChannelModelKey = selection.LogicalModelID, selection.ChannelID, selection.ModelKey
 	}
+	applyCloudAgentRunMediaDefaults(a, state, raw, selection != nil)
 	cloudAgentApplyUniqueModelListSelection(state, raw, a)
 	if err := validateCloudAgentModelSelection(raw, *a); err != nil {
 		return err

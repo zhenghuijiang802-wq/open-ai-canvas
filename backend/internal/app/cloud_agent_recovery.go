@@ -36,7 +36,18 @@ func (s *Service) finishCloudAgentCleanup(ctx context.Context, run *model.CloudA
 	}
 	seen := map[string]bool{}
 	awaitingMedia := false
-	for _, id := range []string{run.ID, activeID, mediaID} {
+	parallelMediaSet := map[string]bool{}
+	var taskList []string
+	taskList = append(taskList, run.ID, activeID, mediaID)
+	if decodeErr == nil {
+		for _, pt := range state.ParallelMediaTasks {
+			if pt.TaskID != "" {
+				parallelMediaSet[pt.TaskID] = true
+				taskList = append(taskList, pt.TaskID)
+			}
+		}
+	}
+	for _, id := range taskList {
 		if id == "" || seen[id] {
 			continue
 		}
@@ -51,7 +62,7 @@ func (s *Service) finishCloudAgentCleanup(ctx context.Context, run *model.CloudA
 		if err != nil {
 			return err
 		}
-		if id == mediaID && s.cloudAgentMediaContinuesAfterStop(run, task) {
+		if (id == mediaID || parallelMediaSet[id]) && s.cloudAgentMediaContinuesAfterStop(run, task) {
 			// 用户停止本轮只停止 Agent 后续步骤。已提交上游的媒体任务可能已经计费，
 			// 取消也拿不回费用，所以保留它并等结果回写画布；调度器会重入这里完成收尾。
 			awaitingMedia = true
@@ -74,6 +85,19 @@ func (s *Service) finishCloudAgentCleanup(ctx context.Context, run *model.CloudA
 	}
 	if awaitingMedia {
 		return nil
+	}
+	if decodeErr == nil && len(state.ParallelMediaTasks) > 0 {
+		for _, pt := range append([]cloudAgentParallelMediaTask(nil), state.ParallelMediaTasks...) {
+			err := s.settleCloudAgentParallelMedia(run.UserID, run.ID, pt.CallID)
+			if err != nil && !errors.Is(err, errCloudAgentCheckpoint) {
+				return err
+			}
+		}
+		refreshed, readErr := s.repo.CloudAgent(run.UserID, run.ID)
+		if readErr != nil {
+			return readErr
+		}
+		run = refreshed
 	}
 	if mediaID != "" && decodeErr == nil && state.CallIndex < len(state.Calls) {
 		err := s.advanceCloudAgentMedia(run, &state, state.Calls[state.CallIndex])

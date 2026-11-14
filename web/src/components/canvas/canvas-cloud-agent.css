@@ -2463,6 +2463,7 @@ summary.agent-tool-step:hover {
 
 .canvas-agent-approval-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
     margin-top: 8px;
@@ -2517,6 +2518,17 @@ summary.agent-tool-step:hover {
     border-color: var(--agent-approval-blue-hover);
     background: var(--agent-approval-blue-hover);
     box-shadow: 0 4px 12px color-mix(in srgb, var(--agent-approval-blue) 25%, transparent);
+}
+
+.canvas-agent-approval-auto {
+    border: 1px solid color-mix(in srgb, #429477 55%, transparent);
+    background: color-mix(in srgb, #429477 14%, transparent);
+    color: var(--foreground);
+}
+
+.canvas-agent-approval-auto:not(:disabled):hover {
+    border-color: #429477;
+    background: color-mix(in srgb, #429477 24%, transparent);
 }
 
 @media (max-width: 420px) {

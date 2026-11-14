@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"yingce/backend/internal/assets"
 	"yingce/backend/internal/canvas/capability"
@@ -163,6 +164,10 @@ func cloudAgentCanvasStateWithRelated(repo *repository.Repository, userID, canva
 }
 
 func cloudAgentCanvasStateSelected(repo *repository.Repository, userID, canvasID string, doc map[string]any, offset int, ids, focusNodeIDs []string, depth int, includeRelated bool, storyboardOffset int, connectionOffsets ...int) (any, error) {
+	return cloudAgentCanvasStateSelectedWithDetail(repo, userID, canvasID, doc, offset, ids, focusNodeIDs, depth, includeRelated, storyboardOffset, "", connectionOffsets...)
+}
+
+func cloudAgentCanvasStateSelectedWithDetail(repo *repository.Repository, userID, canvasID string, doc map[string]any, offset int, ids, focusNodeIDs []string, depth int, includeRelated bool, storyboardOffset int, detail string, connectionOffsets ...int) (any, error) {
 	if offset < 0 || storyboardOffset < 0 || len(ids) > 8 || len(focusNodeIDs) > 8 || (len(ids) > 0 && len(focusNodeIDs) > 0) {
 		return nil, BadAuthRequest("画布读取分页参数无效")
 	}
@@ -261,8 +266,9 @@ func cloudAgentCanvasStateSelected(repo *repository.Repository, userID, canvasID
 			candidateNodes = append(candidateNodes, node)
 		}
 	}
+	summaryOnly := detail == "summary"
 	limit := 320
-	if len(ids) > 0 || len(focus) > 0 {
+	if !summaryOnly && (len(ids) > 0 || len(focus) > 0) {
 		limit = 16000
 	}
 	nodes := []any{}
@@ -278,7 +284,7 @@ func cloudAgentCanvasStateSelected(repo *repository.Repository, userID, canvasID
 			next = candidateIndex
 			break
 		}
-		precise := len(ids) > 0 || focus[id]
+		precise := !summaryOnly && (len(ids) > 0 || focus[id])
 		meta, _ := node["metadata"].(map[string]any)
 		item := map[string]any{"id": id, "type": stringValue(node["type"])}
 		if title, ok := node["title"].(string); ok {
@@ -332,6 +338,12 @@ func cloudAgentCanvasStateSelected(repo *repository.Repository, userID, canvasID
 			item[key] = value
 		}
 		if comic := contract.ComicNodeProjection(node); comic != nil {
+			if !precise {
+				if excerpt, ok := comic["sourceExcerpt"].(string); ok && utf8.RuneCountInString(excerpt) > 200 {
+					comic["sourceExcerpt"] = truncateRunes(excerpt, 200)
+					comic["sourceExcerptTruncated"] = true
+				}
+			}
 			item["comic"] = comic
 		}
 		if cloudAgentCharacterNode(node) {

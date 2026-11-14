@@ -17,6 +17,8 @@ type (
 	CloudAgentRequest                      = app.CloudAgentRequest
 	CloudAgentRunViewOptions               = app.CloudAgentRunViewOptions
 	CloudAgentMediaSettings                = app.CloudAgentMediaSettings
+	CloudAgentMediaDefaults                = app.CloudAgentMediaDefaults
+	CloudAgentApprovalDecisionOptions      = app.CloudAgentApprovalDecisionOptions
 	CloudAgentCapabilitySet                = app.CloudAgentCapabilitySet
 	AgentProfileRequest                    = app.AgentProfileRequest
 	AgentProfileView                       = app.AgentProfileView

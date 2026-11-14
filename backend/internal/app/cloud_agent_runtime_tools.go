@@ -576,8 +576,14 @@ func (s *Service) advanceCloudAgentTool(run *model.CloudAgentExecution, state *c
 			return s.advanceCloudAgentMedia(run, state, cloudAgentMediaCall(call))
 		}
 		if state.Request.PermissionMode == "auto" && state.Approval == nil {
+			if pt, ok := findCloudAgentParallelMediaTask(state, call.ID); ok && pt.TaskID != "" {
+				return s.settleCloudAgentParallelMedia(run.UserID, run.ID, call.ID)
+			}
 			if state.MediaTaskID != "" {
 				return s.advanceCloudAgentMedia(run, state, cloudAgentMediaCall(call))
+			}
+			if state.Request.MediaExecutionMode == "parallel" && cloudAgentConsecutiveMediaCalls(state.Calls, state.CallIndex) > 1 {
+				return s.advanceCloudAgentMediaAutoBatch(run, state)
 			}
 			return s.advanceCloudAgentMediaAuto(run, state, cloudAgentMediaCall(call))
 		}

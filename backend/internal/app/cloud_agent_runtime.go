@@ -115,6 +115,12 @@ type cloudAgentApproval struct {
 	Reason    string                    `json:"reason,omitempty"`
 }
 
+type cloudAgentParallelMediaTask struct {
+	CallID string `json:"callId"`
+	TaskID string `json:"taskId"`
+	NodeID string `json:"nodeId"`
+}
+
 type cloudAgentRuntime struct {
 	RuntimeRunID   string                   `json:"-"`
 	Request        CloudAgentRequest        `json:"request"`
@@ -138,6 +144,7 @@ type cloudAgentRuntime struct {
 	ActiveTaskID       string                                `json:"activeTaskId"`
 	ActiveTextDraft    string                                `json:"activeTextDraft,omitempty"`
 	MediaTaskID        string                                `json:"mediaTaskId,omitempty"`
+	ParallelMediaTasks []cloudAgentParallelMediaTask         `json:"parallelMediaTasks,omitempty"`
 	TaskIDs            []string                              `json:"taskIds"`
 	Step               int                                   `json:"step"`
 	Generations        int                                   `json:"generations"`

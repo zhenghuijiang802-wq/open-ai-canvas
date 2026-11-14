@@ -24,16 +24,28 @@ const cloudAgentOperation = "cloud_agent"
 // A run is one immutable, durable model turn backed by a normal task. Subsequent
 // turns reference the previous run, not a mutable in-memory conversation. This
 // reuses transactional billing, worker leases, cancellation and text replay.
+type CloudAgentMediaDefaults struct {
+	Image *CloudAgentMediaSettings `json:"image,omitempty"`
+	Video *CloudAgentMediaSettings `json:"video,omitempty"`
+}
+
+type CloudAgentApprovalDecisionOptions struct {
+	MediaSettings *CloudAgentMediaSettings `json:"mediaSettings,omitempty"`
+	SwitchToAuto  bool                     `json:"switchToAuto,omitempty"`
+}
+
 type CloudAgentRequest struct {
-	ReasoningMode   string `json:"reasoningMode,omitempty"`
-	ProfileRevision string `json:"profileRevision,omitempty"`
-	CanvasID        string `json:"canvasId"`
-	Prompt          string `json:"prompt"`
-	Model           string `json:"model,omitempty"`
-	LogicalModelID  string `json:"logicalModelId,omitempty"`
-	ChannelID       string `json:"channelId,omitempty"`
-	ChannelModelKey string `json:"channelModelKey,omitempty"`
-	PermissionMode  string `json:"permissionMode"`
+	ReasoningMode      string                   `json:"reasoningMode,omitempty"`
+	ProfileRevision    string                   `json:"profileRevision,omitempty"`
+	CanvasID           string                   `json:"canvasId"`
+	Prompt             string                   `json:"prompt"`
+	Model              string                   `json:"model,omitempty"`
+	LogicalModelID     string                   `json:"logicalModelId,omitempty"`
+	ChannelID          string                   `json:"channelId,omitempty"`
+	ChannelModelKey    string                   `json:"channelModelKey,omitempty"`
+	PermissionMode     string                   `json:"permissionMode"`
+	MediaExecutionMode string                   `json:"mediaExecutionMode,omitempty"`
+	MediaDefaults      *CloudAgentMediaDefaults `json:"mediaDefaults,omitempty"`
 	// PinnedSkillIDs 是用户为对话固定或在本条消息里点名的技能；其他已安装技能由 Agent 按目录自动发现。
 	PinnedSkillIDs        []string `json:"pinnedSkillIds,omitempty"`
 	ContextScope          []string `json:"contextScope"`
@@ -149,6 +161,12 @@ func validateCloudAgentRequest(req *CloudAgentRequest) error {
 	}
 	if req.PermissionMode != "read_only" && req.PermissionMode != "request_approval" && req.PermissionMode != "auto" {
 		return BadAuthRequest("无效的 Agent 执行权限")
+	}
+	if req.MediaExecutionMode != "" && req.MediaExecutionMode != "sequential" && req.MediaExecutionMode != "parallel" {
+		return BadAuthRequest("无效的媒体执行模式")
+	}
+	if err := validateCloudAgentMediaDefaults(req.MediaDefaults); err != nil {
+		return err
 	}
 	for value, spec := range map[string]struct {
 		label string

@@ -597,6 +597,7 @@ export function AgentConversation({
     onApprovalReasonChange,
     onApprove,
     onReject,
+    permissionMode,
     onWithdrawInterjection,
     withdrawingInterjectionId,
     onReplyOption,
@@ -619,8 +620,9 @@ export function AgentConversation({
     onUndo?: (target: AgentCanvasUndoTarget) => void;
     undoStates?: Record<string, AgentCanvasUndoState>;
     onApprovalReasonChange: (reason: string) => void;
-    onApprove: (settings?: AgentMediaSettings) => void;
+    onApprove: (settings?: AgentMediaSettings, options?: { switchToAuto?: boolean }) => void;
     onReject: () => void;
+    permissionMode?: AgentPermissionMode;
     onWithdrawInterjection?: (messageId: string) => void;
     withdrawingInterjectionId?: string | null;
     /** 不传表示当前不该出现选项卡片（例如 ask_user 提问条已在展示）。 */
@@ -726,6 +728,7 @@ export function AgentConversation({
                         onReasonChange={onApprovalReasonChange}
                         onApprove={onApprove}
                         onReject={onReject}
+                        permissionMode={permissionMode}
                     />
                 ) : null}
                 {busy && !approval ? <AgentWorkingMessage theme={theme} label="正在思考" /> : null}
@@ -809,6 +812,7 @@ export function ApprovalCard({
     onReasonChange,
     onApprove,
     onReject,
+    permissionMode,
 }: {
     approval: ApprovalState;
     theme: CanvasTheme;
@@ -817,8 +821,9 @@ export function ApprovalCard({
     targetGenerating?: CanvasNodeData;
     onFocusNode?: (nodeId: string) => void;
     onReasonChange: (value: string) => void;
-    onApprove: (settings?: AgentMediaSettings) => void;
+    onApprove: (settings?: AgentMediaSettings, options?: { switchToAuto?: boolean }) => void;
     onReject: () => void;
+    permissionMode?: AgentPermissionMode;
 }) {
     const [showReason, setShowReason] = useState(Boolean(approval.reason));
     const [mediaSettings, setMediaSettings] = useState<AgentMediaSettings>();
@@ -881,6 +886,17 @@ export function ApprovalCard({
                 <button type="button" className="canvas-agent-approval-reject" disabled={submitting} onClick={onReject}>
                     暂不执行
                 </button>
+                {permissionMode !== "auto" ? (
+                    <button
+                        type="button"
+                        className="canvas-agent-approval-auto"
+                        disabled={submitting || Boolean(targetGenerating)}
+                        onClick={() => onApprove(mediaSettings, { switchToAuto: true })}
+                        title="批准当前操作并保存当前参数，后续预算内的步骤自动执行不再逐次确认"
+                    >
+                        批准并后续全自动
+                    </button>
+                ) : null}
                 <button type="button" className="canvas-agent-approval-approve" disabled={submitting || Boolean(targetGenerating)} onClick={() => onApprove(mediaSettings)}>
                     {submitting ? <LoaderCircle className="size-4 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Check className="size-4" aria-hidden="true" />}
                     {submitting ? "正在提交" : targetGenerating ? "已在节点中生成" : "同意执行"}

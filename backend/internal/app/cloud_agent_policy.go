@@ -111,6 +111,7 @@ func compileCloudAgentPolicies(req CloudAgentRequest, agentName string, skillCat
 	// Behavior belongs to versioned policies; the compiler only projects facts.
 	context := map[string]any{
 		"source": "server_snapshot", "permissionMode": req.PermissionMode,
+		"mediaExecutionMode": firstNonEmpty(req.MediaExecutionMode, "sequential"),
 		"agentIdentity": map[string]string{"name": firstNonEmpty(strings.TrimSpace(agentName), defaultCanvasAppearance().AgentName)},
 		"reasoningMode": mode,
 		"budget": map[string]any{
@@ -118,6 +119,9 @@ func compileCloudAgentPolicies(req CloudAgentRequest, agentName string, skillCat
 			"maxGenerationTasks": req.Budget.MaxGenerationTasks, "maxVideoSeconds": req.Budget.MaxVideoSeconds,
 		},
 		"maxToolCalls": cloudAgentMaxToolCalls, "maxOutputBytes": cloudAgentMaxOutputBytes,
+	}
+	if req.MediaDefaults != nil && (req.MediaDefaults.Image != nil || req.MediaDefaults.Video != nil) {
+		context["mediaDefaults"] = req.MediaDefaults
 	}
 	if strings.TrimSpace(canvasSummary) != "" {
 		// Callers may provide a catalog for policy-contract tests or other

@@ -33,6 +33,9 @@ func (s *Service) cloudAgentExecutionOutput(task *model.Task, initial cloudAgent
 		state = cloudAgentRuntime{Request: initial.Request, ParentID: initial.ParentID, CreativeAnchor: initial.CreativeAnchor, Skills: initial.Skills, SkillVersions: initial.SkillVersions, SkillHints: initial.SkillHints, Memory: initial.Memory, Profile: initial.Profile, TaskIDs: []string{task.ID}, Events: []CloudAgentEvent{}}
 	}
 	out := agentRunOutput(task, initial)
+	if stateErr == nil && state.Request.PermissionMode != "" {
+		out.PermissionMode = state.Request.PermissionMode
+	}
 	out.ConversationID = run.ConversationID
 	if out.ConversationID == "" {
 		out.ConversationID = run.ID

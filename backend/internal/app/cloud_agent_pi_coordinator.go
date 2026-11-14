@@ -404,7 +404,7 @@ func cloudAgentPiTurnSettled(sessionJSONL string, state *cloudAgentRuntime) bool
 	if sessionJSONL == "" || state == nil || state.PiAssistantResponses == 0 {
 		return false
 	}
-	if state.ActiveTaskID != "" || state.MediaTaskID != "" || state.Approval != nil {
+	if state.ActiveTaskID != "" || state.MediaTaskID != "" || len(state.ParallelMediaTasks) > 0 || state.Approval != nil {
 		return false
 	}
 	lines := strings.Split(strings.TrimRight(sessionJSONL, "\n"), "\n")
@@ -457,7 +457,7 @@ func (s *Service) completeCloudAgentPiRun(userID, runID string) error {
 		}
 
 		// 检查是否有未完成的任务
-		if state.ActiveTaskID != "" || state.MediaTaskID != "" || state.Approval != nil {
+		if state.ActiveTaskID != "" || state.MediaTaskID != "" || len(state.ParallelMediaTasks) > 0 || state.Approval != nil {
 			return nil
 		}
 

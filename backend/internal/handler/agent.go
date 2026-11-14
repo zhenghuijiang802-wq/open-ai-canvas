@@ -337,6 +337,7 @@ func RegisterAgentRoutes(r *gin.RouterGroup, svc *service.Service) {
 			Decision      string                           `json:"decision"`
 			Reason        string                           `json:"reason"`
 			MediaSettings *service.CloudAgentMediaSettings `json:"mediaSettings,omitempty"`
+			SwitchToAuto  bool                             `json:"switchToAuto,omitempty"`
 		}
 		decoder := json.NewDecoder(c.Request.Body)
 		decoder.DisallowUnknownFields()
@@ -348,6 +349,10 @@ func RegisterAgentRoutes(r *gin.RouterGroup, svc *service.Service) {
 			fail(c, http.StatusBadRequest, errors.New("decision 无效"))
 			return
 		}
+		if req.SwitchToAuto && req.Decision != "approve" {
+			fail(c, http.StatusBadRequest, errors.New("仅批准时可切换为自动执行"))
+			return
+		}
 		if req.Reason != "" && (!utf8.ValidString(req.Reason) || utf8.RuneCountInString(req.Reason) > 2000 || strings.ContainsAny(req.Reason, "\x00\r\n")) {
 			fail(c, http.StatusBadRequest, errors.New("reason 无效"))
 			return
@@ -356,7 +361,7 @@ func RegisterAgentRoutes(r *gin.RouterGroup, svc *service.Service) {
 			fail(c, http.StatusBadRequest, errors.New("请求必须只包含一个 JSON 对象"))
 			return
 		}
-		if err := svc.DecideCloudAgentApproval(user.ID, c.Param("id"), c.Param("approvalId"), req.Decision, req.Reason, req.MediaSettings); err != nil {
+		if err := svc.DecideCloudAgentApprovalWithOptions(user.ID, c.Param("id"), c.Param("approvalId"), req.Decision, req.Reason, service.CloudAgentApprovalDecisionOptions{MediaSettings: req.MediaSettings, SwitchToAuto: req.SwitchToAuto}); err != nil {
 			failService(c, err)
 			return
 		}

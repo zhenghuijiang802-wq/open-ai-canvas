@@ -219,8 +219,11 @@ func validateCloudAgentRuntime(run *model.CloudAgentExecution, state *cloudAgent
 			return err
 		}
 	}
-	if state.ActiveTaskID != "" && state.MediaTaskID != "" {
+	if state.ActiveTaskID != "" && (state.MediaTaskID != "" || len(state.ParallelMediaTasks) > 0) {
 		return errors.New("Agent runtime has multiple active tasks")
+	}
+	if state.MediaTaskID != "" && len(state.ParallelMediaTasks) > 0 {
+		return errors.New("Agent runtime has conflicting single and parallel media tasks")
 	}
 	if state.HistoryIncludesCurrent && len(state.Canonical.Messages) < len(state.TextHistory) {
 		return errors.New("Agent compacted history exceeds canonical transcript")
@@ -244,6 +247,33 @@ func validateCloudAgentRuntime(run *model.CloudAgentExecution, state *cloudAgent
 	if state.MediaTaskID != "" {
 		if !cloudAgentContainsString(state.TaskIDs, state.MediaTaskID) || state.CallIndex >= len(state.Calls) || (state.Calls[state.CallIndex].Function.Name != "generate_media" && state.Calls[state.CallIndex].Function.Name != "image_layer_split") {
 			return errors.New("Agent runtime media task is not attached to current call")
+		}
+	}
+	if len(state.ParallelMediaTasks) > 0 {
+		seenParallelCalls := make(map[string]struct{}, len(state.ParallelMediaTasks))
+		seenParallelTasks := make(map[string]struct{}, len(state.ParallelMediaTasks))
+		for _, pt := range state.ParallelMediaTasks {
+			if pt.CallID == "" || pt.TaskID == "" || pt.NodeID == "" || !cloudAgentContainsString(state.TaskIDs, pt.TaskID) {
+				return errors.New("Agent runtime parallel media task is invalid")
+			}
+			if _, dup := seenParallelCalls[pt.CallID]; dup {
+				return errors.New("Agent runtime parallel media tasks contain duplicate calls")
+			}
+			if _, dup := seenParallelTasks[pt.TaskID]; dup {
+				return errors.New("Agent runtime parallel media tasks contain duplicate tasks")
+			}
+			seenParallelCalls[pt.CallID] = struct{}{}
+			seenParallelTasks[pt.TaskID] = struct{}{}
+			matched := false
+			for idx := state.CallIndex; idx < len(state.Calls); idx++ {
+				if state.Calls[idx].ID == pt.CallID && cloudAgentMediaTool(state.Calls[idx].Function.Name) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				return errors.New("Agent runtime parallel media task is not attached to a pending media call")
+			}
 		}
 	}
 	if state.AutoPreparedMedia != nil {

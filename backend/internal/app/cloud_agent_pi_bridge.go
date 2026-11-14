@@ -402,6 +402,10 @@ func (s *Service) executeCloudAgentRuntimeTool(ctx context.Context, userID, runI
 		if !cloudAgentToolCallsEquivalent(expected, call) {
 			return nil, fmt.Errorf("工具调用 %q 与模型声明的工具调用不一致", call.ID)
 		}
+		if _, inParallel := findCloudAgentParallelMediaTask(&state, call.ID); inParallel {
+			executed = true
+			break
+		}
 		state.Approval = nil
 		err = s.advanceCloudAgentTool(run, &state)
 		if errors.Is(err, repository.ErrCreationConflict) {
@@ -434,6 +438,15 @@ func (s *Service) executeCloudAgentRuntimeTool(ctx context.Context, userID, runI
 		}
 		if content, ok := cloudAgentToolMessage(&state, call.ID); ok {
 			return cloudAgentPiToolResult(call, content), nil
+		}
+		if pt, ok := findCloudAgentParallelMediaTask(&state, call.ID); ok {
+			if _, err := s.waitCloudAgentTask(ctx, pt.TaskID); err != nil && ctx.Err() != nil {
+				return nil, ctx.Err()
+			}
+			if err := s.settleCloudAgentParallelMedia(userID, runID, call.ID); err != nil {
+				return nil, err
+			}
+			continue
 		}
 		if state.MediaTaskID == "" {
 			return nil, fmt.Errorf("tool %s produced no result", call.Function.Name)

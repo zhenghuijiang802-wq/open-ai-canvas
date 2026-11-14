@@ -99,7 +99,7 @@ export function projectCloudAgentConversation(conversationId: string, sourceRuns
         messages,
         run,
         model: run?.model,
-        permissionMode: run?.permissionMode || "request_approval",
+        permissionMode: run?.permissionMode || "auto",
         skillIds: run?.skills?.map((skill) => skill.id),
         createdAt: runs[0]?.createdAt || "",
         updatedAt: run?.updatedAt || "",
