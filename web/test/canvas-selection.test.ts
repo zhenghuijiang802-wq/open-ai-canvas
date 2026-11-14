@@ -63,10 +63,12 @@ describe("canvas selection semantics", () => {
     test("routes default mouse selection without stealing trackpad or temporary hand gestures", () => {
         const pointer = { altKey: false, background: true, boxSelectEnabled: true, button: 0, ctrlKey: false, metaKey: false, pointerType: "mouse", shiftKey: false, spacePressed: false };
         expect(resolveCanvasPointerIntent(pointer)).toBe("select");
+        expect(resolveCanvasPointerIntent({ ...pointer, ctrlKey: true })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, spacePressed: true })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, button: 1 })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, pointerType: "touch" })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, background: false })).toBe("ignore");
+        expect(resolveCanvasPointerIntent({ ...pointer, background: false, ctrlKey: true })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, background: false, spacePressed: true })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, background: false, button: 1 })).toBe("pan");
         expect(resolveCanvasPointerIntent({ ...pointer, boxSelectEnabled: false })).toBe("pan");

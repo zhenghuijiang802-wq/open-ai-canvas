@@ -19,6 +19,7 @@ type CanvasViewportProps = {
     onViewportPreviewChange?: (viewport: ViewportTransform) => void;
     onCanvasMouseDown?: (event: React.PointerEvent<HTMLDivElement>) => void;
     boxSelectEnabled?: boolean;
+    onTemporaryPanChange?: (active: boolean) => void;
     onCanvasDoubleClick?: (event: React.MouseEvent<HTMLDivElement>) => void;
     onCanvasDeselect?: () => void;
     onContextMenu?: (event: React.MouseEvent) => void;
@@ -58,6 +59,7 @@ export function CanvasViewport({
     onViewportPreviewChange,
     onCanvasMouseDown,
     boxSelectEnabled = false,
+    onTemporaryPanChange,
     onCanvasDoubleClick,
     onCanvasDeselect,
     onContextMenu,
@@ -92,7 +94,12 @@ export function CanvasViewport({
     const spacePressedRef = useRef(false);
     const controlPressedRef = useRef(false);
     const [isSpacePressed, setIsSpacePressed] = useState(false);
+    const [isControlPressed, setIsControlPressed] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
+
+    useEffect(() => {
+        onTemporaryPanChange?.(isControlPressed || isSpacePressed);
+    }, [isControlPressed, isSpacePressed, onTemporaryPanChange]);
 
     useLayoutEffect(() => {
         if (interactive) return;
@@ -112,6 +119,9 @@ export function CanvasViewport({
         delete container?.dataset.canvasViewportInteracting;
         setIsPanning(false);
         setIsSpacePressed(false);
+        setIsControlPressed(false);
+        controlPressedRef.current = false;
+        spacePressedRef.current = false;
         document.body.style.cursor = "default";
     }, [interactive, containerRef]);
 
@@ -177,7 +187,10 @@ export function CanvasViewport({
     useEffect(() => {
         if (!interactive) return;
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Control") controlPressedRef.current = true;
+            if (event.key === "Control") {
+                controlPressedRef.current = true;
+                if (!(event.target instanceof Element && event.target.closest("input,textarea,select,[contenteditable]:not([contenteditable='false'])"))) setIsControlPressed(true);
+            }
             if (event.code !== "Space") return;
             if (event.target instanceof Element && event.target.closest("input,textarea,select,button,[contenteditable='true']")) return;
             event.preventDefault();
@@ -186,13 +199,17 @@ export function CanvasViewport({
         };
 
         const handleKeyUp = (event: KeyboardEvent) => {
-            if (event.key === "Control") controlPressedRef.current = false;
+            if (event.key === "Control") {
+                controlPressedRef.current = false;
+                setIsControlPressed(false);
+            }
             if (event.code !== "Space") return;
             spacePressedRef.current = false;
             setIsSpacePressed(false);
         };
 
         const handleBlur = () => {
+            setIsControlPressed(false);
             controlPressedRef.current = false;
             spacePressedRef.current = false;
             setIsSpacePressed(false);
@@ -463,8 +480,8 @@ export function CanvasViewport({
             ref={containerRef}
             data-canvas-viewport
             data-popover-anchor-container
-            data-canvas-pan-state={isPanning ? "grabbing" : isSpacePressed || !boxSelectEnabled ? "grab" : undefined}
-            className={`relative h-full w-full select-none overflow-clip touch-none ${isPanning ? "cursor-grabbing" : isSpacePressed || !boxSelectEnabled ? "cursor-grab" : "canvas-cursor-select"}`}
+            data-canvas-pan-state={isPanning ? "grabbing" : isControlPressed || isSpacePressed || !boxSelectEnabled ? "grab" : undefined}
+            className={`relative h-full w-full select-none overflow-clip touch-none ${isPanning ? "cursor-grabbing" : isControlPressed || isSpacePressed || !boxSelectEnabled ? "cursor-grab" : "canvas-cursor-select"}`}
             style={
                 {
                     background: resolvedAppearance.background,
@@ -478,6 +495,13 @@ export function CanvasViewport({
                 } as React.CSSProperties
             }
             onPointerDown={handlePointerDown}
+            onPointerDownCapture={(event) => {
+                if (!interactive || !event.ctrlKey || event.button !== 0 || event.pointerType === "touch") return;
+                const target = event.target instanceof Element ? event.target : null;
+                if (target?.closest(`${CANVAS_POINTER_IGNORE_SELECTOR},input,textarea,select,button,[contenteditable]:not([contenteditable='false'])`)) return;
+                event.stopPropagation();
+                handlePointerDown(event);
+            }}
             onDoubleClick={(event) => {
                 const target = event.target instanceof Element ? event.target : null;
                 if (!target?.closest("[data-node-id],[data-connection-id],[data-canvas-no-zoom]")) onCanvasDoubleClick?.(event);
